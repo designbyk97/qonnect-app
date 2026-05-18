@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 // ── SUPABASE ───────────────────────────────────────────────
 const supabase = createClient(
-  "https://eozhbqousbzjsewloolg.supabase.co",
+  "https://eozhbqouszbjsewloolg.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvemhicW91c3pianNld2xvb2xnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMjUzNjQsImV4cCI6MjA5NDcwMTM2NH0.yQJ4bGxkDaOlQVZ2AUmIXYgM7d7OeIV4NcAp18Ci0Ek"
 );
 
