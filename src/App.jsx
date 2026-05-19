@@ -54,6 +54,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [msgInput, setMsgInput] = useState("");
   const [stats, setStats] = useState({ activeNow: 0, totalMembers: 0, postsToday: 0 });
+  const [ownPosts, setOwnPosts] = useState([]);
   const [postForm, setPostForm] = useState({ title: "", description: "", budget: "", duration: "", location: "", tags: "" });
   const [authForm, setAuthForm] = useState({ email: "", password: "", name: "", type: "freelancer" });
   const [bioEdit, setBioEdit] = useState("");
@@ -122,6 +123,11 @@ export default function App() {
       .or(`seeker_id.eq.${user.id},provider_id.eq.${user.id}`)
       .order("created_at", { ascending: false });
     if (data) setChats(data);
+  };
+
+  const fetchOwnPosts = async () => {
+    const { data } = await supabase.from("posts").select("*").eq("author_id", user.id).order("created_at", { ascending: false });
+    if (data) setOwnPosts(data);
   };
 
   const fetchMessages = async (matchId) => {
@@ -214,6 +220,13 @@ export default function App() {
       setShowPostForm(false); fetchPosts(); showToast("Post veröffentlicht! ✓");
     }
     setLoading(false);
+  };
+
+  const deletePost = async (postId) => {
+    const { error } = await supabase.from("posts").delete().eq("id", postId).eq("author_id", user.id);
+    if (error) { showToast("Fehler beim Löschen", "#ef4444"); return; }
+    setPosts(prev => prev.filter(p => p.id !== postId));
+    showToast("Post gelöscht ✓");
   };
 
   const sendMessage = async () => {
@@ -368,8 +381,14 @@ export default function App() {
               {post.tags.map(t => <Tag key={t} label={t} />)}
             </div>
           )}
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button onClick={() => setActiveTab("chat")} style={s.btn()}>Connecten →</button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            {post.author_id === user?.id
+              ? <button onClick={() => deletePost(post.id)} style={{ ...s.btn("#ef444418"), color: "#ef4444", border: "1px solid #ef444433", padding: "8px 14px", fontSize: 12 }}>🗑 Löschen</button>
+              : <div></div>
+            }
+            {post.author_id !== user?.id && (
+              <button onClick={() => setActiveTab("chat")} style={s.btn()}>Connecten →</button>
+            )}
           </div>
         </div>
       ))}
@@ -521,6 +540,36 @@ export default function App() {
               <div key={l} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
                 <span style={{ fontSize: 13, color: "#4a5a7a" }}>{l}</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: c }}>{v}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Own Posts */}
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 11, color: "#4a5a7a", marginBottom: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+              Meine Posts ({ownPosts.length})
+            </div>
+            {ownPosts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "30px 20px", color: "#4a5a7a", background: "#0d1120", border: "1px solid #1a2540", borderRadius: 12 }}>
+                <div style={{ fontSize: 24, marginBottom: 8 }}>📭</div>
+                <div style={{ fontSize: 13 }}>Noch keine Posts veröffentlicht</div>
+              </div>
+            ) : ownPosts.map(post => (
+              <div key={post.id} style={{ background: "#0d1120", border: "1px solid #1a2540", borderRadius: 12, padding: 14, marginBottom: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                  <span style={{ padding: "2px 9px", borderRadius: 100, fontSize: 10, fontWeight: 700, textTransform: "uppercase", background: post.type === "seek" ? "#2a7fff18" : "#00c8ff15", color: post.type === "seek" ? "#2a7fff" : "#00c8ff", border: `1px solid ${post.type === "seek" ? "#2a7fff44" : "#00c8ff33"}` }}>
+                    {post.type === "seek" ? "Suche" : "Biete"}
+                  </span>
+                  <span style={{ fontSize: 11, color: "#4a5a7a" }}>{timeAgo(post.created_at)}</span>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 5 }}>{post.title}</div>
+                <div style={{ fontSize: 12, color: "#8090aa", lineHeight: 1.5, marginBottom: 10 }}>{post.description}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 11, color: post.status === "active" ? "#10b981" : "#4a5a7a", fontWeight: 600 }}>
+                    {post.status === "active" ? "● Aktiv" : "● Geschlossen"}
+                  </span>
+                  <button onClick={() => { deletePost(post.id); setOwnPosts(prev => prev.filter(p => p.id !== post.id)); }} style={{ ...s.btn("#ef444418"), color: "#ef4444", border: "1px solid #ef444433", padding: "6px 12px", fontSize: 12 }}>🗑 Löschen</button>
+                </div>
               </div>
             ))}
           </div>
