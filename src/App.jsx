@@ -61,6 +61,7 @@ export default function App() {
   const [authForm, setAuthForm] = useState({ email: "", password: "", name: "", type: "freelancer" });
   const [editForm, setEditForm] = useState({ bio: "", linkedin_url: "", skills: "", location: "" });
   const messagesEndRef = useRef(null);
+  const realtimeRef = useRef(null);
   const avatarInputRef = useRef(null);
   const coverInputRef = useRef(null);
 
@@ -150,7 +151,38 @@ export default function App() {
   const fetchMessages = async (matchId) => {
     const { data } = await supabase.from("messages").select("*")
       .eq("match_id", matchId).order("created_at", { ascending: true });
-    if (data) setChatMessages(data.map(m => ({ ...m, me: m.sender_id === user.id })));
+    if (data) {
+      setChatMessages(data.map(m => ({ ...m, me: m.sender_id === user.id })));
+      // Mark received messages as read
+      await supabase.from("messages").update({ is_read: true })
+        .eq("match_id", matchId).neq("sender_id", user.id).eq("is_read", false);
+    }
+
+    // Unsubscribe previous realtime
+    if (realtimeRef.current) { supabase.removeChannel(realtimeRef.current); }
+
+    // Subscribe to realtime
+    const channel = supabase.channel(`chat:${matchId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `match_id=eq.${matchId}` },
+        (payload) => {
+          const msg = payload.new;
+          setChatMessages(prev => {
+            if (prev.find(m => m.id === msg.id)) return prev;
+            return [...prev, { ...msg, me: msg.sender_id === user.id }];
+          });
+          // Mark as read if received
+          if (msg.sender_id !== user.id) {
+            supabase.from("messages").update({ is_read: true }).eq("id", msg.id);
+          }
+        }
+      )
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `match_id=eq.${matchId}` },
+        (payload) => {
+          setChatMessages(prev => prev.map(m => m.id === payload.new.id ? { ...m, is_read: payload.new.is_read } : m));
+        }
+      )
+      .subscribe();
+    realtimeRef.current = channel;
   };
 
   // ── CONNECT (creates real match) ─────────────────────────
@@ -325,8 +357,7 @@ export default function App() {
     if (!msgInput.trim() || !activeChat) return;
     const content = msgInput;
     setMsgInput("");
-    setChatMessages(prev => [...prev, { id: Date.now(), me: true, content, created_at: new Date().toISOString() }]);
-    await supabase.from("messages").insert({ match_id: activeChat.id, sender_id: user.id, content });
+    await supabase.from("messages").insert({ match_id: activeChat.id, sender_id: user.id, content, is_read: false });
   };
 
   // ── HELPERS ──────────────────────────────────────────────
@@ -666,8 +697,18 @@ export default function App() {
             {chatMessages.length === 0 && <div style={{ textAlign: "center", color: "#4a5a7a", fontSize: 13, marginTop: 40 }}>Noch keine Nachrichten.</div>}
             {chatMessages.map((msg, i) => (
               <div key={i} style={{ display: "flex", justifyContent: msg.me ? "flex-end" : "flex-start" }}>
-                <div style={{ maxWidth: "70%", padding: "10px 14px", borderRadius: 14, fontSize: 13, lineHeight: 1.5, background: msg.me ? "#2a7fff22" : "#0d1120", border: `1px solid ${msg.me ? "#2a7fff33" : "#1a2540"}`, color: msg.me ? "#c8dcf8" : "#b0c4de", borderBottomRightRadius: msg.me ? 4 : 14, borderBottomLeftRadius: msg.me ? 14 : 4 }}>
-                  {msg.content}
+                <div>
+                  <div style={{ maxWidth: "70%", padding: "10px 14px", borderRadius: 14, fontSize: 13, lineHeight: 1.5, background: msg.me ? "#2a7fff22" : "#0d1120", border: `1px solid ${msg.me ? "#2a7fff33" : "#1a2540"}`, color: msg.me ? "#c8dcf8" : "#b0c4de", borderBottomRightRadius: msg.me ? 4 : 14, borderBottomLeftRadius: msg.me ? 14 : 4 }}>
+                    {msg.content}
+                  </div>
+                  {msg.me && (
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 2, paddingRight: 2 }}>
+                      {msg.is_read
+                        ? <span style={{ fontSize: 11, color: "#2a7fff", fontWeight: 700 }}>✓✓</span>
+                        : <span style={{ fontSize: 11, color: "#4a5a7a" }}>✓</span>
+                      }
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
