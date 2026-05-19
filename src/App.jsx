@@ -31,6 +31,7 @@ const TrustBadge = ({ score, verified }) => {
 
 export default function App() {
   const [screen, setScreen] = useState("auth");
+  const [onboardingForm, setOnboardingForm] = useState({ name: "", type: "freelancer" });
   const [authMode, setAuthMode] = useState("login");
   const [activeTab, setActiveTab] = useState("home");
   const [feedTab, setFeedTab] = useState("seek");
@@ -70,10 +71,10 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) { setUser(session.user); fetchProfile(session.user.id); setScreen("app"); }
+      if (session?.user) { setUser(session.user); fetchProfile(session.user.id); }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session?.user) { setUser(session.user); fetchProfile(session.user.id); setScreen("app"); }
+      if (session?.user) { setUser(session.user); fetchProfile(session.user.id); }
       else { setUser(null); setProfile(null); setScreen("auth"); }
     });
     return () => subscription.unsubscribe();
@@ -86,9 +87,13 @@ export default function App() {
 
   const fetchProfile = async (userId) => {
     const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
-    if (data) {
+    if (data && data.display_name) {
       setProfile(data);
       setEditForm({ bio: data.bio || "", linkedin_url: data.linkedin_url || "", skills: (data.skills || []).join(", "), location: data.location || "" });
+      setScreen("app");
+    } else {
+      // No profile yet - show onboarding
+      setScreen("onboarding");
     }
   };
 
@@ -210,6 +215,23 @@ export default function App() {
       await supabase.from("profiles").insert({ id: data.user.id, account_type: authForm.type, display_name: authForm.name, trust_score: 20, is_verified: false, posts_today: 0 });
       showToast("Account erstellt! ✓");
     }
+    setLoading(false);
+  };
+
+  const handleOnboarding = async () => {
+    if (!onboardingForm.name || onboardingForm.name.trim().length < 2) { showToast("Bitte Namen eingeben", "#ef4444"); return; }
+    setLoading(true);
+    const { error } = await supabase.from("profiles").upsert({
+      id: user.id,
+      display_name: onboardingForm.name.trim(),
+      account_type: onboardingForm.type,
+      trust_score: 20,
+      is_verified: false,
+      posts_today: 0,
+      avatar_url: user.user_metadata?.avatar_url || null
+    });
+    if (error) { showToast("Fehler beim Speichern", "#ef4444"); setLoading(false); return; }
+    await fetchProfile(user.id);
     setLoading(false);
   };
 
