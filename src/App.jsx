@@ -6,12 +6,15 @@ const supabase = createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvemhicW91c3pianNld2xvb2xnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMjUzNjQsImV4cCI6MjA5NDcwMTM2NH0.yQJ4bGxkDaOlQVZ2AUmIXYgM7d7OeIV4NcAp18Ci0Ek"
 );
 
+const SUPABASE_URL = "https://eozhbqouszbjsewloolg.supabase.co";
 const CATEGORIES = ["Alle", "Design", "IT", "Finanzen", "Logistik", "Personal", "Marketing", "Beratung", "Recht"];
 
-const Avatar = ({ initials, size = 38, color = "#2a7fff" }) => (
-  <div style={{ width: size, height: size, borderRadius: size * 0.28, background: `${color}22`, border: `1px solid ${color}44`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.32, fontWeight: 700, color, flexShrink: 0 }}>
-    {(initials || "?").substring(0, 2).toUpperCase()}
-  </div>
+const Avatar = ({ url, initials, size = 38, color = "#2a7fff" }) => (
+  url
+    ? <img src={url} style={{ width: size, height: size, borderRadius: size * 0.28, objectFit: "cover", flexShrink: 0 }} />
+    : <div style={{ width: size, height: size, borderRadius: size * 0.28, background: `${color}22`, border: `1px solid ${color}44`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.32, fontWeight: 700, color, flexShrink: 0 }}>
+        {(initials || "?").substring(0, 2).toUpperCase()}
+      </div>
 );
 
 const Tag = ({ label }) => (
@@ -38,6 +41,7 @@ export default function App() {
   const [showPostForm, setShowPostForm] = useState(false);
   const [showAI, setShowAI] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
   const [postType, setPostType] = useState("seek");
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -45,12 +49,17 @@ export default function App() {
   const [chats, setChats] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [toast, setToast] = useState(null);
   const [msgInput, setMsgInput] = useState("");
   const [stats, setStats] = useState({ activeNow: 0, totalMembers: 0, postsToday: 0 });
   const [postForm, setPostForm] = useState({ title: "", description: "", budget: "", duration: "", location: "", tags: "" });
   const [authForm, setAuthForm] = useState({ email: "", password: "", name: "", type: "freelancer" });
+  const [bioEdit, setBioEdit] = useState("");
   const messagesEndRef = useRef(null);
+  const avatarInputRef = useRef(null);
+  const coverInputRef = useRef(null);
 
   const showToast = (msg, color = "#10b981") => {
     setToast({ msg, color });
@@ -74,13 +83,12 @@ export default function App() {
 
   const fetchProfile = async (userId) => {
     const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
-    if (data) setProfile(data);
+    if (data) { setProfile(data); setBioEdit(data.bio || ""); }
   };
 
   const fetchPosts = async () => {
-    let query = supabase
-      .from("posts")
-      .select("*, profiles(display_name, trust_score, is_verified, account_type)")
+    let query = supabase.from("posts")
+      .select("*, profiles(display_name, trust_score, is_verified, account_type, avatar_url)")
       .eq("type", feedTab).eq("status", "active")
       .order("created_at", { ascending: false }).limit(50);
     if (activeCategory !== "Alle") query = query.contains("tags", [activeCategory]);
@@ -92,7 +100,8 @@ export default function App() {
           name: p.profiles?.display_name || "Unbekannt",
           trust: p.profiles?.trust_score || 0,
           verified: p.profiles?.is_verified || false,
-          avatar: (p.profiles?.display_name || "U").substring(0, 2).toUpperCase()
+          avatar: (p.profiles?.display_name || "U").substring(0, 2).toUpperCase(),
+          avatar_url: p.profiles?.avatar_url || null
         },
         time: timeAgo(p.created_at)
       })));
@@ -109,7 +118,7 @@ export default function App() {
   const fetchChats = async () => {
     if (!user) return;
     const { data } = await supabase.from("matches")
-      .select("*, seeker:profiles!matches_seeker_id_fkey(display_name), provider:profiles!matches_provider_id_fkey(display_name)")
+      .select("*, seeker:profiles!matches_seeker_id_fkey(display_name, avatar_url), provider:profiles!matches_provider_id_fkey(display_name, avatar_url)")
       .or(`seeker_id.eq.${user.id},provider_id.eq.${user.id}`)
       .order("created_at", { ascending: false });
     if (data) setChats(data);
@@ -119,6 +128,49 @@ export default function App() {
     const { data } = await supabase.from("messages").select("*")
       .eq("match_id", matchId).order("created_at", { ascending: true });
     if (data) setChatMessages(data.map(m => ({ ...m, me: m.sender_id === user.id })));
+  };
+
+  // ── UPLOAD AVATAR ────────────────────────────────────────
+  const uploadAvatar = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { showToast("Max. 2MB", "#ef4444"); return; }
+    setUploadingAvatar(true);
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/avatar.${ext}`;
+    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+    if (error) { showToast("Upload fehlgeschlagen", "#ef4444"); setUploadingAvatar(false); return; }
+    const url = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}`;
+    await supabase.from("profiles").update({ avatar_url: url }).eq("id", user.id);
+    setProfile(prev => ({ ...prev, avatar_url: url }));
+    showToast("Profilbild gespeichert ✓");
+    setUploadingAvatar(false);
+  };
+
+  // ── UPLOAD COVER ─────────────────────────────────────────
+  const uploadCover = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast("Max. 5MB", "#ef4444"); return; }
+    setUploadingCover(true);
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/cover.${ext}`;
+    const { error } = await supabase.storage.from("covers").upload(path, file, { upsert: true });
+    if (error) { showToast("Upload fehlgeschlagen", "#ef4444"); setUploadingCover(false); return; }
+    const url = `${SUPABASE_URL}/storage/v1/object/public/covers/${path}`;
+    await supabase.from("profiles").update({ cover_url: url }).eq("id", user.id);
+    setProfile(prev => ({ ...prev, cover_url: url }));
+    showToast("Titelbild gespeichert ✓");
+    setUploadingCover(false);
+  };
+
+  // ── SAVE BIO ─────────────────────────────────────────────
+  const saveBio = async () => {
+    const { error } = await supabase.from("profiles").update({ bio: bioEdit }).eq("id", user.id);
+    if (error) { showToast("Fehler beim Speichern", "#ef4444"); return; }
+    setProfile(prev => ({ ...prev, bio: bioEdit }));
+    setShowEditProfile(false);
+    showToast("Profil gespeichert ✓");
   };
 
   const handleLogin = async () => {
@@ -189,16 +241,16 @@ export default function App() {
     page: { background: "#07090f", minHeight: "100vh", color: "#eaf2ff", fontFamily: "'Sora', sans-serif", display: "flex", flexDirection: "column" },
     topBar: { position: "sticky", top: 0, zIndex: 50, background: "rgba(7,9,15,0.95)", backdropFilter: "blur(12px)", borderBottom: "1px solid #1a2540", height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", flexShrink: 0 },
     logo: { fontFamily: "'Orbitron', monospace", fontWeight: 900, fontSize: "1.15rem", color: "#eaf2ff" },
-    content: { flex: 1, overflowY: "auto", paddingBottom: 72, maxWidth: 640, margin: "0 auto", width: "100%" },
+    content: { flex: 1, paddingBottom: 72, maxWidth: 640, margin: "0 auto", width: "100%" },
     bottomNav: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, height: 64, background: "rgba(7,9,15,0.97)", borderTop: "1px solid #1a2540", display: "flex", alignItems: "center", justifyContent: "space-around", maxWidth: 640, margin: "0 auto" },
     card: { margin: "0 16px 12px", background: "#0d1120", border: "1px solid #1a2540", borderRadius: 14, padding: 16 },
     input: { width: "100%", background: "#0d1120", border: "1px solid #1a2540", borderRadius: 10, padding: "11px 14px", fontFamily: "inherit", fontSize: 14, color: "#eaf2ff", outline: "none", boxSizing: "border-box" },
     label: { fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#4a5a7a", marginBottom: 6, display: "block" },
     btn: (bg = "#2a7fff") => ({ padding: "10px 20px", background: bg, color: "#fff", border: "none", borderRadius: 10, fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" }),
-    overlay: { position: "fixed", inset: 0, background: "#07090f", zIndex: 100, display: "flex", flexDirection: "column", maxWidth: 640, margin: "0 auto", left: "50%", transform: "translateX(-50%)", width: "100%" },
+    overlay: { position: "fixed", top: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 640, height: "100vh", background: "#07090f", zIndex: 100, display: "flex", flexDirection: "column" },
   };
 
-  // AUTH
+  // ── AUTH ─────────────────────────────────────────────────
   if (screen === "auth") return (
     <div style={{ ...s.page, alignItems: "center", justifyContent: "center", padding: "20px 16px" }}>
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -253,7 +305,7 @@ export default function App() {
     </div>
   );
 
-  // HOME
+  // ── HOME ─────────────────────────────────────────────────
   const renderHome = () => (
     <>
       <div style={{ padding: "12px 16px 0" }}>
@@ -292,7 +344,7 @@ export default function App() {
       ) : posts.map(post => (
         <div key={post.id} style={s.card}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <Avatar initials={post.author?.avatar} size={40} color={post.author?.verified ? "#10b981" : "#2a7fff"} />
+            <Avatar url={post.author?.avatar_url} initials={post.author?.avatar} size={40} color={post.author?.verified ? "#10b981" : "#2a7fff"} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 14, fontWeight: 600 }}>{post.author?.name}</div>
               <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 2 }}>
@@ -324,12 +376,12 @@ export default function App() {
     </>
   );
 
-  // CHAT
+  // ── CHAT ─────────────────────────────────────────────────
   const renderChat = () => (
     <>
       {activeChat ? (
         <>
-          <div style={{ ...s.topBar, top: 58 }}>
+          <div style={{ ...s.topBar }}>
             <button onClick={() => { setActiveChat(null); setChatMessages([]); }} style={{ background: "none", border: "none", color: "#2a7fff", fontSize: 20, cursor: "pointer" }}>←</button>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <Avatar initials={getChatPartner(activeChat)} size={32} />
@@ -380,29 +432,66 @@ export default function App() {
     </>
   );
 
-  // PROFILE
+  // ── PROFILE ──────────────────────────────────────────────
   const renderProfile = () => {
     const trust = profile?.trust_score || 0;
     const limit = trust <= 30 ? 3 : trust <= 60 ? 10 : 99;
     const used = profile?.posts_today || 0;
     return (
       <>
-        <div style={{ height: 100, background: "linear-gradient(135deg, #0d1a35, #0d2040)", position: "relative" }}>
-          <div style={{ position: "absolute", bottom: -24, left: 20 }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, #2a7fff, #00c8ff)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700, color: "#fff", border: "3px solid #07090f" }}>
-              {(profile?.display_name || "U").substring(0, 2).toUpperCase()}
+        {/* Hidden file inputs */}
+        <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={uploadAvatar} />
+        <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={uploadCover} />
+
+        {/* Cover */}
+        <div
+          onClick={() => coverInputRef.current.click()}
+          style={{ height: 120, background: profile?.cover_url ? `url(${profile.cover_url}) center/cover` : "linear-gradient(135deg, #0d1a35, #0d2040)", position: "relative", cursor: "pointer" }}
+        >
+          {!profile?.cover_url && (
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#2a3a5a", fontSize: 12, fontWeight: 600 }}>
+              {uploadingCover ? "Wird hochgeladen..." : "📷 Titelbild hinzufügen"}
             </div>
-          </div>
-          <button onClick={handleLogout} style={{ position: "absolute", top: 12, right: 16, fontSize: 12, color: "#ef4444", background: "none", border: "1px solid #ef444433", borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontFamily: "inherit" }}>Abmelden</button>
+          )}
+          {profile?.cover_url && (
+            <div style={{ position: "absolute", bottom: 8, right: 12, background: "rgba(0,0,0,0.6)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "#fff", backdropFilter: "blur(4px)" }}>
+              ✏️ Ändern
+            </div>
+          )}
+          <button onClick={(e) => { e.stopPropagation(); handleLogout(); }} style={{ position: "absolute", top: 12, right: 16, fontSize: 12, color: "#ef4444", background: "rgba(0,0,0,0.5)", border: "1px solid #ef444433", borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontFamily: "inherit", backdropFilter: "blur(4px)" }}>Abmelden</button>
         </div>
 
-        <div style={{ padding: "36px 16px 20px" }}>
+        {/* Avatar */}
+        <div style={{ padding: "0 16px", position: "relative", marginTop: -30 }}>
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ position: "relative", cursor: "pointer" }} onClick={() => avatarInputRef.current.click()}>
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} style={{ width: 72, height: 72, borderRadius: 20, objectFit: "cover", border: "3px solid #07090f" }} />
+                : <div style={{ width: 72, height: 72, borderRadius: 20, background: "linear-gradient(135deg, #2a7fff, #00c8ff)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700, color: "#fff", border: "3px solid #07090f" }}>
+                    {(profile?.display_name || "U").substring(0, 2).toUpperCase()}
+                  </div>
+              }
+              <div style={{ position: "absolute", bottom: 0, right: 0, width: 22, height: 22, background: "#2a7fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, border: "2px solid #07090f" }}>
+                {uploadingAvatar ? "⏳" : "📷"}
+              </div>
+            </div>
+            <button onClick={() => setShowEditProfile(true)} style={{ ...s.btn("#0d1120"), border: "1px solid #1a2540", color: "#eaf2ff", padding: "8px 16px", fontSize: 13 }}>✏️ Profil bearbeiten</button>
+          </div>
+
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <span style={{ fontFamily: "'Orbitron', monospace", fontSize: "1.05rem", fontWeight: 900 }}>{profile?.display_name || "Nutzer"}</span>
             {profile?.is_verified && <span style={{ background: "#10b981", color: "#fff", borderRadius: "50%", width: 16, height: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 9 }}>✓</span>}
           </div>
-          <div style={{ fontSize: 13, color: "#4a5a7a", marginBottom: 20 }}>{profile?.account_type === "company" ? "🏢 Unternehmen" : "👤 Freelancer"} · {user?.email}</div>
+          <div style={{ fontSize: 13, color: "#4a5a7a", marginBottom: 10 }}>{profile?.account_type === "company" ? "🏢 Unternehmen" : "👤 Freelancer"} · {user?.email}</div>
 
+          {/* Bio */}
+          {profile?.bio && (
+            <div style={{ fontSize: 13, color: "#8090aa", lineHeight: 1.7, marginBottom: 16, background: "#0d1120", border: "1px solid #1a2540", borderRadius: 12, padding: 14 }}>
+              {profile.bio}
+            </div>
+          )}
+
+          {/* Stats */}
           <div style={{ display: "flex", background: "#0d1120", border: "1px solid #1a2540", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
             {[["Trust", trust], ["Projekte", profile?.completed_projects || 0], ["Bewertung", `${profile?.rating_avg || 0}★`]].map(([l, v], i) => (
               <div key={l} style={{ flex: 1, padding: "13px 8px", textAlign: "center", borderRight: i < 2 ? "1px solid #1a2540" : "none" }}>
@@ -413,8 +502,7 @@ export default function App() {
           </div>
 
           <div style={{ background: "#10b98112", border: "1px solid #10b98133", borderRadius: 12, padding: 14, marginBottom: 16, fontSize: 12, color: "#6ee7b7", lineHeight: 1.7 }}>
-            🛡️ ✓ E-Mail verifiziert<br />
-            <span style={{ color: "#4a5a7a" }}>LinkedIn verknüpfen → +30 Trust → mehr Posts/Tag</span>
+            🛡️ ✓ E-Mail verifiziert · LinkedIn verknüpfen → +30 Trust
           </div>
 
           <div style={{ background: "#0d1120", border: "1px solid #1a2540", borderRadius: 12, padding: 14, marginBottom: 16 }}>
@@ -441,7 +529,33 @@ export default function App() {
     );
   };
 
-  // POST FORM
+  // ── EDIT PROFILE OVERLAY ─────────────────────────────────
+  const renderEditProfile = () => (
+    <div style={s.overlay}>
+      <div style={{ ...s.topBar, position: "relative" }}>
+        <button onClick={() => setShowEditProfile(false)} style={{ background: "none", border: "none", color: "#2a7fff", fontSize: 20, cursor: "pointer" }}>←</button>
+        <span style={{ fontSize: 15, fontWeight: 700 }}>Profil bearbeiten</span>
+        <div style={{ width: 32 }}></div>
+      </div>
+      <div style={{ flex: 1, overflowY: "auto", padding: 16, scrollbarWidth: "none" }}>
+        <label style={s.label}>Bio</label>
+        <textarea
+          style={{ ...s.input, height: 140, resize: "none", lineHeight: 1.6, marginBottom: 20 }}
+          placeholder="Beschreibe dich kurz – wer du bist, was du machst, was du suchst..."
+          value={bioEdit}
+          onChange={e => setBioEdit(e.target.value)}
+          maxLength={500}
+        />
+        <div style={{ fontSize: 12, color: "#4a5a7a", textAlign: "right", marginTop: -16, marginBottom: 20 }}>{bioEdit.length}/500</div>
+
+        <button onClick={saveBio} style={{ ...s.btn(), width: "100%", padding: 14, fontSize: 15, borderRadius: 12 }}>
+          Speichern ✓
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── POST FORM ─────────────────────────────────────────────
   const renderPostForm = () => (
     <div style={s.overlay}>
       <div style={{ ...s.topBar, position: "relative" }}>
@@ -460,10 +574,10 @@ export default function App() {
         </div>
         {[
           { k: "title", l: "Titel", p: "z.B. Projektleiter für Belgien-Projekt gesucht" },
-          { k: "description", l: "Beschreibung", p: "Was genau brauchst du? Je präziser desto besser.", ta: true },
+          { k: "description", l: "Beschreibung", p: "Was genau brauchst du?", ta: true },
           { k: "budget", l: "Budget (€)", p: "z.B. 4000" },
           { k: "duration", l: "Laufzeit", p: "z.B. 3 Monate" },
-          { k: "location", l: "Ort / Remote", p: "z.B. Remote, Berlin, EU" },
+          { k: "location", l: "Ort / Remote", p: "z.B. Remote, Berlin" },
           { k: "tags", l: "Kategorien (kommagetrennt)", p: "z.B. Design, IT, Remote" },
         ].map(({ k, l, p, ta }) => (
           <div key={k} style={{ marginBottom: 14 }}>
@@ -479,7 +593,7 @@ export default function App() {
     </div>
   );
 
-  // NOTIFICATIONS
+  // ── NOTIFICATIONS ─────────────────────────────────────────
   const renderNotifications = () => (
     <div style={s.overlay}>
       <div style={{ ...s.topBar, position: "relative" }}>
@@ -494,7 +608,7 @@ export default function App() {
     </div>
   );
 
-  // AI
+  // ── AI ────────────────────────────────────────────────────
   const renderAI = () => (
     <div style={s.overlay}>
       <div style={{ ...s.topBar, position: "relative" }}>
@@ -511,7 +625,7 @@ export default function App() {
     </div>
   );
 
-  // MAIN RENDER
+  // ── MAIN RENDER ───────────────────────────────────────────
   return (
     <div style={s.page}>
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -519,8 +633,9 @@ export default function App() {
       {showPostForm && renderPostForm()}
       {showNotifications && renderNotifications()}
       {showAI && renderAI()}
+      {showEditProfile && renderEditProfile()}
 
-      {!showPostForm && !showNotifications && !showAI && (
+      {!showPostForm && !showNotifications && !showAI && !showEditProfile && (
         <>
           <div style={s.topBar}>
             <div style={s.logo}><span style={{ color: "#2a7fff" }}>q</span>onnect</div>
