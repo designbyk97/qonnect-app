@@ -204,10 +204,29 @@ export default function App() {
 
   const handlePost = async () => {
     // Validierung
-    if (!postForm.title || postForm.title.trim().length < 10) { showToast("Titel: mindestens 10 Zeichen", "#ef4444"); return; }
-    if (!postForm.description || postForm.description.trim().length < 30) { showToast("Beschreibung: mindestens 30 Zeichen", "#ef4444"); return; }
-    if (postForm.budget && (isNaN(parseFloat(postForm.budget)) || parseFloat(postForm.budget) <= 0)) { showToast("Budget muss eine positive Zahl sein", "#ef4444"); return; }
-    if (postForm.tags && postForm.tags.split(",").some(t => t.trim().length < 2)) { showToast("Kategorien: mind. 2 Zeichen pro Tag", "#ef4444"); return; }
+    const title = postForm.title.trim();
+    const desc = postForm.description.trim();
+
+    // Titel: mind. 15 Zeichen, mind. 2 Wörter mit je >2 Buchstaben
+    if (!title || title.length < 15) { showToast("Titel: mindestens 15 Zeichen", "#ef4444"); return; }
+    if (title.split(" ").filter(w => w.length > 2).length < 2) { showToast("Titel: mindestens 2 aussagekräftige Wörter", "#ef4444"); return; }
+
+    // Beschreibung: mind. 50 Zeichen, mind. 6 Wörter mit je >2 Buchstaben
+    if (!desc || desc.length < 50) { showToast("Beschreibung: mindestens 50 Zeichen", "#ef4444"); return; }
+    if (desc.split(" ").filter(w => w.length > 2).length < 6) { showToast("Beschreibung: mindestens 6 aussagekräftige Wörter", "#ef4444"); return; }
+
+    // Budget: nur Zahl zwischen 1 und 10.000.000
+    if (postForm.budget) {
+      const b = parseFloat(postForm.budget);
+      if (isNaN(b) || b <= 0) { showToast("Budget: nur positive Zahl erlaubt (z.B. 4000)", "#ef4444"); return; }
+      if (b > 10000000) { showToast("Budget: maximaler Wert 10.000.000€", "#ef4444"); return; }
+    }
+
+    // Location: mind. 3 Zeichen wenn angegeben
+    if (postForm.location && postForm.location.trim().length < 3) { showToast("Ort: mindestens 3 Zeichen", "#ef4444"); return; }
+
+    // Tags: jeder Tag mind. 3 Zeichen
+    if (postForm.tags && postForm.tags.split(",").some(t => t.trim().length < 3)) { showToast("Kategorien: jeder Tag mind. 3 Zeichen", "#ef4444"); return; }
     const trust = profile?.trust_score || 0;
     const postsToday = profile?.posts_today || 0;
     const limit = trust <= 30 ? 3 : trust <= 60 ? 10 : Infinity;
