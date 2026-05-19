@@ -203,7 +203,11 @@ export default function App() {
   const handleLogout = async () => { await supabase.auth.signOut(); };
 
   const handlePost = async () => {
-    if (!postForm.title || !postForm.description) { showToast("Titel und Beschreibung pflicht", "#ef4444"); return; }
+    // Validierung
+    if (!postForm.title || postForm.title.trim().length < 10) { showToast("Titel: mindestens 10 Zeichen", "#ef4444"); return; }
+    if (!postForm.description || postForm.description.trim().length < 30) { showToast("Beschreibung: mindestens 30 Zeichen", "#ef4444"); return; }
+    if (postForm.budget && (isNaN(parseFloat(postForm.budget)) || parseFloat(postForm.budget) <= 0)) { showToast("Budget muss eine positive Zahl sein", "#ef4444"); return; }
+    if (postForm.tags && postForm.tags.split(",").some(t => t.trim().length < 2)) { showToast("Kategorien: mind. 2 Zeichen pro Tag", "#ef4444"); return; }
     const trust = profile?.trust_score || 0;
     const postsToday = profile?.posts_today || 0;
     const limit = trust <= 30 ? 3 : trust <= 60 ? 10 : Infinity;
@@ -623,12 +627,12 @@ export default function App() {
           ⚠️ Nur business-relevante Posts. Professioneller Ton Pflicht.
         </div>
         {[
-          { k: "title", l: "Titel", p: "z.B. Projektleiter für Belgien-Projekt gesucht" },
-          { k: "description", l: "Beschreibung", p: "Was genau brauchst du?", ta: true },
-          { k: "budget", l: "Budget (€)", p: "z.B. 4000" },
-          { k: "duration", l: "Laufzeit", p: "z.B. 3 Monate" },
-          { k: "location", l: "Ort / Remote", p: "z.B. Remote, Berlin" },
-          { k: "tags", l: "Kategorien (kommagetrennt)", p: "z.B. Design, IT, Remote" },
+          { k: "title", l: "Titel *", p: "Mind. 10 Zeichen – z.B. Projektleiter für Belgien-Projekt" },
+          { k: "description", l: "Beschreibung *", p: "Mind. 30 Zeichen – Was genau brauchst du? Kontext, Anforderungen...", ta: true },
+          { k: "budget", l: "Budget (€) – nur Zahl", p: "z.B. 4000" },
+          { k: "duration", l: "Laufzeit", p: "z.B. 3 Monate, 2 Wochen, Langfristig" },
+          { k: "location", l: "Ort / Remote", p: "z.B. Remote, Berlin, EU-weit" },
+          { k: "tags", l: "Kategorien (kommagetrennt)", p: "z.B. Design, IT, Marketing" },
         ].map(({ k, l, p, ta }) => (
           <div key={k} style={{ marginBottom: 14 }}>
             <label style={s.label}>{l}</label>
