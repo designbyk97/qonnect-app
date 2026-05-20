@@ -166,14 +166,14 @@ export default function App() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `match_id=eq.${matchId}` },
         (payload) => {
           const msg = payload.new;
+          // Only add if from other user (own messages shown optimistically)
+          if (msg.sender_id === user.id) return;
           setChatMessages(prev => {
             if (prev.find(m => m.id === msg.id)) return prev;
-            return [...prev, { ...msg, me: msg.sender_id === user.id }];
+            return [...prev, { ...msg, me: false }];
           });
-          // Mark as read if received
-          if (msg.sender_id !== user.id) {
-            supabase.from("messages").update({ is_read: true }).eq("id", msg.id);
-          }
+          // Mark as read immediately
+          supabase.from("messages").update({ is_read: true }).eq("id", msg.id);
         }
       )
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `match_id=eq.${matchId}` },
@@ -356,8 +356,13 @@ export default function App() {
   const sendMessage = async () => {
     if (!msgInput.trim() || !activeChat) return;
     const content = msgInput;
+    const tempId = `temp_${Date.now()}`;
     setMsgInput("");
-    await supabase.from("messages").insert({ match_id: activeChat.id, sender_id: user.id, content, is_read: false });
+    // Optimistic update - show immediately
+    setChatMessages(prev => [...prev, { id: tempId, me: true, content, is_read: false, created_at: new Date().toISOString(), temp: true }]);
+    const { data } = await supabase.from("messages").insert({ match_id: activeChat.id, sender_id: user.id, content, is_read: false }).select().single();
+    // Replace temp with real message
+    if (data) setChatMessages(prev => prev.map(m => m.id === tempId ? { ...data, me: true } : m));
   };
 
   // ── HELPERS ──────────────────────────────────────────────
