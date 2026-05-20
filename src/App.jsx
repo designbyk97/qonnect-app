@@ -86,24 +86,28 @@ export default function App() {
   useEffect(() => { if (screen === "app" && activeTab === "chat" && !activeChat) fetchChats(); }, [screen, activeTab, activeChat]);
   useEffect(() => { if (screen === "app" && user) fetchUnreadCount(); }, [screen, user, activeChat]);
 
-  // Global realtime listener for incoming messages (badge update)
+  // Global realtime listener - only subscribe once when app starts
+  const activeChatRef = useRef(null);
+  useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
+
   useEffect(() => {
     if (!user || screen !== "app") return;
-    const channel = supabase.channel("global_messages")
+    const channel = supabase.channel("global_messages_badge")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
           const msg = payload.new;
-          // Only count if message is for us and chat is not open
           if (msg.sender_id !== user.id) {
-            if (!activeChat || activeChat.id !== msg.match_id) {
+            if (!activeChatRef.current || activeChatRef.current.id !== msg.match_id) {
               setUnreadCount(prev => prev + 1);
             }
+            // Update last message in chat list
+            setChats(prev => prev.map(c => c.id === msg.match_id ? { ...c, last_message: msg.content, last_message_at: msg.created_at } : c));
           }
         }
       )
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [user, screen, activeChat]);
+  }, [user, screen]);
   useEffect(() => { if (screen === "app" && activeTab === "profile" && user) fetchOwnPosts(); }, [screen, activeTab, user]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
@@ -160,7 +164,18 @@ export default function App() {
       .select("*, seeker:profiles!matches_seeker_id_fkey(display_name, avatar_url), provider:profiles!matches_provider_id_fkey(display_name, avatar_url)")
       .or(`seeker_id.eq.${user.id},provider_id.eq.${user.id}`)
       .order("created_at", { ascending: false });
-    if (data) setChats(data);
+    if (!data) return;
+
+    // Fetch last message for each chat
+    const chatsWithMessages = await Promise.all(data.map(async (chat) => {
+      const { data: msgs } = await supabase.from("messages")
+        .select("content, created_at, sender_id")
+        .eq("match_id", chat.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      return { ...chat, last_message: msgs?.[0]?.content || null, last_message_at: msgs?.[0]?.created_at || chat.created_at };
+    }));
+    setChats(chatsWithMessages.sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at)));
   };
 
   const fetchUnreadCount = async () => {
@@ -769,7 +784,9 @@ export default function App() {
               <Avatar initials={getChatPartner(chat)} size={44} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 3 }}>{getChatPartner(chat)}</div>
-                <div style={{ fontSize: 12, color: "#4a5a7a" }}>{chat.status === "pending" ? "Verbindungsanfrage" : "Aktives Gespräch"}</div>
+                <div style={{ fontSize: 12, color: "#4a5a7a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {chat.last_message || (chat.status === "pending" ? "Verbindungsanfrage" : "Aktives Gespräch")}
+                </div>
               </div>
               <span style={{ fontSize: 11, color: "#4a5a7a" }}>{timeAgo(chat.created_at)}</span>
             </div>
