@@ -56,6 +56,7 @@ export default function App() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [toast, setToast] = useState(null);
   const [msgInput, setMsgInput] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
   const [stats, setStats] = useState({ activeNow: 0, totalMembers: 0, postsToday: 0 });
   const [postForm, setPostForm] = useState({ title: "", description: "", budget: "", duration: "", location: "", tags: "" });
   const [authForm, setAuthForm] = useState({ email: "", password: "", name: "", type: "freelancer" });
@@ -83,6 +84,7 @@ export default function App() {
 
   useEffect(() => { if (screen === "app") { fetchPosts(); fetchStats(); } }, [screen, feedTab, activeCategory]);
   useEffect(() => { if (screen === "app" && activeTab === "chat" && !activeChat) fetchChats(); }, [screen, activeTab, activeChat]);
+  useEffect(() => { if (screen === "app" && user) fetchUnreadCount(); }, [screen, user, activeChat]);
   useEffect(() => { if (screen === "app" && activeTab === "profile" && user) fetchOwnPosts(); }, [screen, activeTab, user]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
@@ -140,6 +142,16 @@ export default function App() {
       .or(`seeker_id.eq.${user.id},provider_id.eq.${user.id}`)
       .order("created_at", { ascending: false });
     if (data) setChats(data);
+  };
+
+  const fetchUnreadCount = async () => {
+    if (!user) return;
+    const matchIds = await supabase.from("matches").select("id").or(`seeker_id.eq.${user.id},provider_id.eq.${user.id}`);
+    if (!matchIds.data?.length) return;
+    const ids = matchIds.data.map(m => m.id);
+    const { count } = await supabase.from("messages").select("*", { count: "exact", head: true })
+      .in("match_id", ids).eq("is_read", false).neq("sender_id", user.id);
+    setUnreadCount(count || 0);
   };
 
   const fetchOwnPosts = async () => {
@@ -719,9 +731,9 @@ export default function App() {
             ))}
             <div ref={messagesEndRef} />
           </div>
-          <div style={{ position: "fixed", bottom: 64, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 640, padding: "10px 16px", display: "flex", gap: 10, background: "rgba(7,9,15,0.97)", borderTop: "1px solid #1a2540", boxSizing: "border-box" }}>
-            <input style={{ ...s.input, flex: 1 }} placeholder="Nachricht..." value={msgInput} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendMessage()} />
-            <button onClick={sendMessage} style={{ ...s.btn(), padding: "0 18px" }}>→</button>
+          <div style={{ position: "fixed", bottom: 64, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 640, padding: "10px 16px", display: "flex", gap: 10, background: "rgba(7,9,15,0.97)", borderTop: "1px solid #1a2540", boxSizing: "border-box", alignItems: "center" }}>
+            <input style={{ ...s.input, flex: 1, fontSize: 16, minHeight: 44 }} placeholder="Nachricht..." value={msgInput} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendMessage()} />
+            <button onClick={sendMessage} style={{ ...s.btn(), padding: "0", width: 44, height: 44, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>→</button>
           </div>
         </>
       ) : (
@@ -985,8 +997,11 @@ export default function App() {
 
           <div style={s.bottomNav}>
             {[{ k: "home", icon: "🏠", label: "Feed" }, { k: "chat", icon: "💬", label: "Chats" }].map(({ k, icon, label }) => (
-              <button key={k} onClick={() => setActiveTab(k)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer", padding: "6px 18px", borderRadius: 10, background: activeTab === k ? "#2a7fff15" : "none", border: "none", fontFamily: "inherit" }}>
+              <button key={k} onClick={() => { setActiveTab(k); if (k === "chat") setUnreadCount(0); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer", padding: "6px 18px", borderRadius: 10, background: activeTab === k ? "#2a7fff15" : "none", border: "none", fontFamily: "inherit", position: "relative" }}>
                 <span style={{ fontSize: 20 }}>{icon}</span>
+                {k === "chat" && unreadCount > 0 && (
+                  <span style={{ position: "absolute", top: 4, right: 10, background: "#ef4444", color: "#fff", borderRadius: "50%", width: 16, height: 16, fontSize: 9, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{unreadCount > 9 ? "9+" : unreadCount}</span>
+                )}
                 <span style={{ fontSize: 10, fontWeight: 600, color: activeTab === k ? "#2a7fff" : "#4a5a7a" }}>{label}</span>
               </button>
             ))}
