@@ -85,6 +85,25 @@ export default function App() {
   useEffect(() => { if (screen === "app") { fetchPosts(); fetchStats(); } }, [screen, feedTab, activeCategory]);
   useEffect(() => { if (screen === "app" && activeTab === "chat" && !activeChat) fetchChats(); }, [screen, activeTab, activeChat]);
   useEffect(() => { if (screen === "app" && user) fetchUnreadCount(); }, [screen, user, activeChat]);
+
+  // Global realtime listener for incoming messages (badge update)
+  useEffect(() => {
+    if (!user || screen !== "app") return;
+    const channel = supabase.channel("global_messages")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" },
+        (payload) => {
+          const msg = payload.new;
+          // Only count if message is for us and chat is not open
+          if (msg.sender_id !== user.id) {
+            if (!activeChat || activeChat.id !== msg.match_id) {
+              setUnreadCount(prev => prev + 1);
+            }
+          }
+        }
+      )
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [user, screen, activeChat]);
   useEffect(() => { if (screen === "app" && activeTab === "profile" && user) fetchOwnPosts(); }, [screen, activeTab, user]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
