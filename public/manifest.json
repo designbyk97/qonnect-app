@@ -1,0 +1,26 @@
+{
+  "name": "Qonnect – Connect · Solve · Grow",
+  "short_name": "Qonnect",
+  "description": "B2B Plattform die Unternehmen mit Freelancern verbindet",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07090f",
+  "theme_color": "#2a7fff",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "de"
+}
