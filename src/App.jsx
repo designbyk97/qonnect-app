@@ -42,6 +42,8 @@ export default function App() {
   const [showAI, setShowAI] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showImpressum, setShowImpressum] = useState(false);
+  const [showDatenschutz, setShowDatenschutz] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [viewingProfile, setViewingProfile] = useState(null);
   const [postType, setPostType] = useState("seek");
@@ -303,6 +305,16 @@ export default function App() {
     setLoading(false);
   };
 
+  // OneSignal - request push permission
+  const requestPushPermission = () => {
+    if (window.OneSignal) {
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.Notifications.requestPermission();
+      });
+    }
+  };
+
   const handleOnboarding = async () => {
     if (!onboardingForm.name || onboardingForm.name.trim().length < 2) { showToast("Bitte Namen eingeben", "#ef4444"); return; }
     setLoading(true);
@@ -317,6 +329,7 @@ export default function App() {
     });
     if (error) { showToast("Fehler beim Speichern", "#ef4444"); setLoading(false); return; }
     await fetchProfile(user.id);
+    requestPushPermission();
     setLoading(false);
   };
 
@@ -886,6 +899,12 @@ export default function App() {
             ))}
           </div>
 
+          {/* Legal Links */}
+          <div style={{ display: "flex", gap: 16, marginBottom: 20, paddingTop: 4 }}>
+            <button onClick={() => setShowImpressum(true)} style={{ background: "none", border: "none", color: "#4a5a7a", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>Impressum</button>
+            <button onClick={() => setShowDatenschutz(true)} style={{ background: "none", border: "none", color: "#4a5a7a", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>Datenschutz</button>
+          </div>
+
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 11, color: "#4a5a7a", marginBottom: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>Meine Posts ({ownPosts.length})</div>
             {ownPosts.length === 0 ? (
@@ -1024,8 +1043,10 @@ export default function App() {
       {showEditProfile && renderEditProfile()}
       {selectedPost && renderPostDetail()}
       {viewingProfile && renderOtherProfile()}
+      {showImpressum && renderImpressum()}
+      {showDatenschutz && renderDatenschutz()}
 
-      {!showPostForm && !showNotifications && !showAI && !showEditProfile && !selectedPost && !viewingProfile && (
+      {!showPostForm && !showNotifications && !showAI && !showEditProfile && !selectedPost && !viewingProfile && !showImpressum && !showDatenschutz && (
         <>
           <div style={s.topBar}>
             <div style={s.logo}><span style={{ color: "#2a7fff" }}>q</span>onnect</div>
