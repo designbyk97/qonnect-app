@@ -100,12 +100,17 @@ export default function App() {
             if (!activeChatRef.current || activeChatRef.current.id !== msg.match_id) {
               setUnreadCount(prev => prev + 1);
             }
-            // Update last message in chat list
-            setChats(prev => prev.map(c => c.id === msg.match_id ? { ...c, last_message: msg.content, last_message_at: msg.created_at } : c));
+            // Update last message + unread in chat list
+            setChats(prev => prev.map(c => c.id === msg.match_id
+              ? { ...c, last_message: msg.content, last_message_at: msg.created_at, has_unread: true }
+              : c
+            ));
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Global realtime status:", status);
+      });
     return () => supabase.removeChannel(channel);
   }, [user, screen]);
   useEffect(() => { if (screen === "app" && activeTab === "profile" && user) fetchOwnPosts(); }, [screen, activeTab, user]);
@@ -166,14 +171,16 @@ export default function App() {
       .order("created_at", { ascending: false });
     if (!data) return;
 
-    // Fetch last message for each chat
+    // Fetch last message + unread status for each chat
     const chatsWithMessages = await Promise.all(data.map(async (chat) => {
       const { data: msgs } = await supabase.from("messages")
-        .select("content, created_at, sender_id")
+        .select("content, created_at, sender_id, is_read")
         .eq("match_id", chat.id)
         .order("created_at", { ascending: false })
         .limit(1);
-      return { ...chat, last_message: msgs?.[0]?.content || null, last_message_at: msgs?.[0]?.created_at || chat.created_at };
+      const lastMsg = msgs?.[0];
+      const has_unread = lastMsg && lastMsg.sender_id !== user.id && !lastMsg.is_read;
+      return { ...chat, last_message: lastMsg?.content || null, last_message_at: lastMsg?.created_at || chat.created_at, has_unread };
     }));
     setChats(chatsWithMessages.sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at)));
   };
@@ -780,15 +787,18 @@ export default function App() {
               <div style={{ fontSize: 13 }}>Connecte dich mit jemandem im Feed!</div>
             </div>
           ) : chats.map(chat => (
-            <div key={chat.id} onClick={() => { setActiveChat(chat); fetchMessages(chat.id); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #ffffff05", cursor: "pointer" }}>
+            <div key={chat.id} onClick={() => { setActiveChat(chat); fetchMessages(chat.id); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #ffffff05", cursor: "pointer", background: chat.has_unread ? "#2a7fff06" : "none" }}>
               <Avatar initials={getChatPartner(chat)} size={44} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 3 }}>{getChatPartner(chat)}</div>
-                <div style={{ fontSize: 12, color: "#4a5a7a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div style={{ fontSize: 14, fontWeight: chat.has_unread ? 700 : 600, marginBottom: 3 }}>{getChatPartner(chat)}</div>
+                <div style={{ fontSize: 12, color: chat.has_unread ? "#eaf2ff" : "#4a5a7a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {chat.last_message || (chat.status === "pending" ? "Verbindungsanfrage" : "Aktives Gespräch")}
                 </div>
               </div>
-              <span style={{ fontSize: 11, color: "#4a5a7a" }}>{timeAgo(chat.created_at)}</span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
+                <span style={{ fontSize: 11, color: "#4a5a7a" }}>{timeAgo(chat.last_message_at || chat.created_at)}</span>
+                {chat.has_unread && <span style={{ width: 8, height: 8, background: "#ef4444", borderRadius: "50%", display: "block" }}></span>}
+              </div>
             </div>
           ))}
         </>
