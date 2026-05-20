@@ -72,6 +72,12 @@ export default function App() {
   const [offerForm, setOfferForm] = useState({ proposal: "", price: "", timeline: "", refLinks: "" });
   const [deletingChatId, setDeletingChatId] = useState(null);
   const [navVariant, setNavVariant] = useState(7);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const [viewingProfilePosts, setViewingProfilePosts] = useState([]);
   const [editProjects, setEditProjects] = useState([]);
   const [newProject, setNewProject] = useState({ name: "", url: "", desc: "" });
@@ -2011,48 +2017,70 @@ export default function App() {
 
       {!showOfferForm && !showOfferDetail && !showNotifications && !showAI && !showEditProfile && !selectedPost && !viewingProfile && !showImpressum && !showDatenschutz && (
         <>
-          {/* NAV STYLE SWITCHER */}
-          <button
-            onClick={() => setNavVariant(v => v === 7 ? 8 : 7)}
-            style={{ position: "fixed", bottom: 28, right: 12, zIndex: 120, width: 38, height: 38, borderRadius: 12, background: "rgba(255,255,255,0.7)", backdropFilter: "blur(12px)", border: "1px solid #c0d8f0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 12px #1a3a6a18" }}
-          >
-            <span style={{ fontSize: 18, color: "#2a7fff" }}>⇄</span>
-          </button>
-
-          {/* VARIANTE 7 – Unten links gestapelt */}
-          {navVariant === 7 && <div style={{ position: "fixed", bottom: 16, left: 16, zIndex: 110, display: "flex", flexDirection: "column", gap: 6, background: "#fff", borderRadius: 20, padding: 10, boxShadow: "0 8px 32px #2a7fff28", border: "1px solid #c0d8f0" }}>
-            {[{ k: "home", icon: "🏠", label: "Feed" }, { k: "chat", icon: "💬", label: "Chat" }].map(({ k, icon, label }) => (
-              <button key={k} onClick={() => { setShowPostForm(false); setActiveTab(k); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 12, border: "none", background: activeTab === k && !showPostForm ? "#2a7fff" : "#e8f2ff", cursor: "pointer", minWidth: 110 }}>
-                <span style={{ fontSize: 18 }}>{icon}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: activeTab === k && !showPostForm ? "#fff" : "#1a3a5a" }}>{label}</span>
+          {/* MOBIL – Instagram-Style Bottom Nav */}
+          {isMobile && (
+            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 110, background: "#fff", borderTop: "1px solid #c0d8f0", display: "flex", alignItems: "center", justifyContent: "space-around", padding: "8px 0 12px", boxShadow: "0 -4px 20px #1a3a6a12" }}>
+              {[{ k: "home", icon: "🏠", label: "Feed" }, { k: "chat", icon: "💬", label: "Chat" }].map(({ k, icon, label }) => (
+                <button key={k} onClick={() => { setShowPostForm(false); setActiveTab(k); }} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}>
+                  <span style={{ fontSize: 22 }}>{icon}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: activeTab === k && !showPostForm ? "#2a7fff" : "#8090aa", fontFamily: "inherit" }}>{label}</span>
+                </button>
+              ))}
+              <button onClick={() => setShowPostForm(true)} style={{ width: 48, height: 48, borderRadius: 16, background: "#2a7fff", border: "none", fontSize: 24, color: "#fff", cursor: "pointer", boxShadow: "0 4px 16px #2a7fff50", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>+</button>
+              {[{ k: "profile", icon: "👤", label: "Profil" }].map(({ k, icon, label }) => (
+                <button key={k} onClick={() => { setShowPostForm(false); setActiveTab(k); }} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}>
+                  <span style={{ fontSize: 22 }}>{icon}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: activeTab === k && !showPostForm ? "#2a7fff" : "#8090aa", fontFamily: "inherit" }}>{label}</span>
+                </button>
+              ))}
+              <button onClick={() => { setShowPostForm(false); setActiveTab("home"); setHomeTab("gespeichert"); }} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}>
+                <span style={{ fontSize: 22 }}>🔖</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: activeTab === "home" && homeTab === "gespeichert" && !showPostForm ? "#2a7fff" : "#8090aa", fontFamily: "inherit" }}>Gespeichert</span>
               </button>
-            ))}
-            <button onClick={() => setShowPostForm(true)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 12, border: "none", background: "#2a7fff", cursor: "pointer", boxShadow: "0 4px 12px #2a7fff50" }}>
-              <span style={{ fontSize: 18, color: "#fff" }}>✚</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Neu</span>
+            </div>
+          )}
+
+          {/* DESKTOP – Variante 7 & 8 mit Switcher */}
+          {!isMobile && <>
+            <button
+              onClick={() => setNavVariant(v => v === 7 ? 8 : 7)}
+              style={{ position: "fixed", bottom: 28, right: 12, zIndex: 120, width: 38, height: 38, borderRadius: 12, background: "rgba(255,255,255,0.7)", backdropFilter: "blur(12px)", border: "1px solid #c0d8f0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 12px #1a3a6a18" }}>
+              <span style={{ fontSize: 18, color: "#2a7fff" }}>⇄</span>
             </button>
-            {[{ k: "offer", icon: "💡", label: "Anbieten" }, { k: "profile", icon: "👤", label: "Profil" }].map(({ k, icon, label }) => (
-              <button key={k} onClick={() => { if (k === "offer") { setPostType("offer"); setShowPostForm(true); } else { setShowPostForm(false); setActiveTab(k); } }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 12, border: "none", background: activeTab === k && !showPostForm ? "#2a7fff" : "#e8f2ff", cursor: "pointer", minWidth: 110 }}>
-                <span style={{ fontSize: 18 }}>{icon}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: activeTab === k && !showPostForm ? "#fff" : "#1a3a5a" }}>{label}</span>
-              </button>
-            ))}
-          </div>}
 
-          {/* VARIANTE 8 – Einzelne schwebende Karten unten */}
-          {navVariant === 8 && <div style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 620, zIndex: 110, display: "flex", justifyContent: "center", gap: 8, padding: "0 16px" }}>
-            {[{ k: "home", icon: "🏠" }, { k: "chat", icon: "💬" }].map(({ k, icon }) => (
-              <button key={k} onClick={() => { setShowPostForm(false); setActiveTab(k); }} style={{ flex: 1, height: 52, borderRadius: 16, border: `2px solid ${activeTab === k && !showPostForm ? "#2a7fff" : "#c0d8f0"}`, background: activeTab === k && !showPostForm ? "#2a7fff" : "#fff", cursor: "pointer", fontSize: 22, boxShadow: "0 4px 16px #1a3a6a15", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ filter: activeTab === k && !showPostForm ? "brightness(10)" : "none" }}>{icon}</span>
+            {navVariant === 7 && <div style={{ position: "fixed", bottom: 16, left: 16, zIndex: 110, display: "flex", flexDirection: "column", gap: 6, background: "#fff", borderRadius: 20, padding: 10, boxShadow: "0 8px 32px #2a7fff28", border: "1px solid #c0d8f0" }}>
+              {[{ k: "home", icon: "🏠", label: "Feed" }, { k: "chat", icon: "💬", label: "Chat" }].map(({ k, icon, label }) => (
+                <button key={k} onClick={() => { setShowPostForm(false); setActiveTab(k); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 12, border: "none", background: activeTab === k && !showPostForm ? "#2a7fff" : "#e8f2ff", cursor: "pointer", minWidth: 110 }}>
+                  <span style={{ fontSize: 18 }}>{icon}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: activeTab === k && !showPostForm ? "#fff" : "#1a3a5a" }}>{label}</span>
+                </button>
+              ))}
+              <button onClick={() => setShowPostForm(true)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 12, border: "none", background: "#2a7fff", cursor: "pointer", boxShadow: "0 4px 12px #2a7fff50" }}>
+                <span style={{ fontSize: 18, color: "#fff" }}>✚</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Neu</span>
               </button>
-            ))}
-            <button onClick={() => setShowPostForm(true)} style={{ flex: 1.4, height: 52, background: "#2a7fff", borderRadius: 16, border: "none", fontSize: 26, color: "#fff", cursor: "pointer", boxShadow: "0 6px 20px #2a7fff50", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-            {[{ k: "offer", icon: "💡" }, { k: "profile", icon: "👤" }].map(({ k, icon }) => (
-              <button key={k} onClick={() => { if (k === "offer") { setPostType("offer"); setShowPostForm(true); } else { setShowPostForm(false); setActiveTab(k); } }} style={{ flex: 1, height: 52, borderRadius: 16, border: `2px solid ${activeTab === k && !showPostForm ? "#2a7fff" : "#c0d8f0"}`, background: activeTab === k && !showPostForm ? "#2a7fff" : "#fff", cursor: "pointer", fontSize: 22, boxShadow: "0 4px 16px #1a3a6a15", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ filter: activeTab === k && !showPostForm ? "brightness(10)" : "none" }}>{icon}</span>
-              </button>
-            ))}
-          </div>}
+              {[{ k: "offer", icon: "💡", label: "Anbieten" }, { k: "profile", icon: "👤", label: "Profil" }].map(({ k, icon, label }) => (
+                <button key={k} onClick={() => { if (k === "offer") { setPostType("offer"); setShowPostForm(true); } else { setShowPostForm(false); setActiveTab(k); } }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 12, border: "none", background: activeTab === k && !showPostForm ? "#2a7fff" : "#e8f2ff", cursor: "pointer", minWidth: 110 }}>
+                  <span style={{ fontSize: 18 }}>{icon}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: activeTab === k && !showPostForm ? "#fff" : "#1a3a5a" }}>{label}</span>
+                </button>
+              ))}
+            </div>}
+
+            {navVariant === 8 && <div style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 620, zIndex: 110, display: "flex", justifyContent: "center", gap: 8, padding: "0 16px" }}>
+              {[{ k: "home", icon: "🏠" }, { k: "chat", icon: "💬" }].map(({ k, icon }) => (
+                <button key={k} onClick={() => { setShowPostForm(false); setActiveTab(k); }} style={{ flex: 1, height: 52, borderRadius: 16, border: `2px solid ${activeTab === k && !showPostForm ? "#2a7fff" : "#c0d8f0"}`, background: activeTab === k && !showPostForm ? "#2a7fff" : "#fff", cursor: "pointer", fontSize: 22, boxShadow: "0 4px 16px #1a3a6a15", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ filter: activeTab === k && !showPostForm ? "brightness(10)" : "none" }}>{icon}</span>
+                </button>
+              ))}
+              <button onClick={() => setShowPostForm(true)} style={{ flex: 1.4, height: 52, background: "#2a7fff", borderRadius: 16, border: "none", fontSize: 26, color: "#fff", cursor: "pointer", boxShadow: "0 6px 20px #2a7fff50", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+              {[{ k: "offer", icon: "💡" }, { k: "profile", icon: "👤" }].map(({ k, icon }) => (
+                <button key={k} onClick={() => { if (k === "offer") { setPostType("offer"); setShowPostForm(true); } else { setShowPostForm(false); setActiveTab(k); } }} style={{ flex: 1, height: 52, borderRadius: 16, border: `2px solid ${activeTab === k && !showPostForm ? "#2a7fff" : "#c0d8f0"}`, background: activeTab === k && !showPostForm ? "#2a7fff" : "#fff", cursor: "pointer", fontSize: 22, boxShadow: "0 4px 16px #1a3a6a15", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ filter: activeTab === k && !showPostForm ? "brightness(10)" : "none" }}>{icon}</span>
+                </button>
+              ))}
+            </div>}
+          </>}
         </>
       )}
 
