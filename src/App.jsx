@@ -565,7 +565,17 @@ export default function App() {
     setLoading(false);
   };
 
-  const handleLogout = async () => { await supabase.auth.signOut(); };
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setActiveTab("home");
+    setHomeTab("feed");
+    setShowSettings(false);
+    setShowEditProfile(false);
+    setSelectedPost(null);
+    setViewingProfile(null);
+    setActiveChat(null);
+    setProfileTab("posts");
+  };
 
   // ── POST ─────────────────────────────────────────────────
   const handlePost = async () => {
