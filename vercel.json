@@ -1,0 +1,10 @@
+{
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.startqonnect.com" }],
+      "destination": "https://startqonnect.com/$1",
+      "permanent": true
+    }
+  ]
+}
