@@ -536,7 +536,7 @@ export default function App() {
     else {
       await supabase.from("profiles").update({ posts_today: postsToday + 1 }).eq("id", user.id);
       setPostForm({ title: "", description: "", budget: "", duration: "", location: "", tags: "" });
-      setShowPostForm(false); fetchPosts(); fetchOwnPosts(); showToast("Post veröffentlicht! ✓");
+      setShowPostForm(false); setActiveTab("home"); setHomeTab("feed"); setFeedTab(postType); fetchPosts(); fetchOwnPosts(); showToast("Post veröffentlicht! ✓");
     }
     setLoading(false);
   };
@@ -925,24 +925,37 @@ export default function App() {
   );
 
   // ── POST CARD ─────────────────────────────────────────────
+  const openPostDetail = async (post) => {
+    setSelectedPost(post);
+    if (post.author_id !== user?.id) {
+      const newCount = (post.view_count || 0) + 1;
+      supabase.from("posts").update({ view_count: newCount }).eq("id", post.id);
+      setPosts(prev => prev.map(p => p.id === post.id ? { ...p, view_count: newCount } : p));
+      setSavedPostsList(prev => prev.map(p => p.id === post.id ? { ...p, view_count: newCount } : p));
+    }
+  };
+
   const renderPostCard = (post) => (
     <div key={post.id} style={s.card}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
         <div onClick={() => { if (post.author?.id && post.author.id !== user?.id) fetchOtherProfile(post.author.id); }} style={{ cursor: post.author?.id !== user?.id ? "pointer" : "default" }}>
           <Avatar url={post.author?.avatar_url} initials={post.author?.avatar} size={40} color={post.author?.verified ? "#10b981" : "#2a7fff"} />
         </div>
-        <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setSelectedPost(post)}>
+        <div style={{ flex: 1, cursor: "pointer" }} onClick={() => openPostDetail(post)}>
           <div style={{ fontSize: 14, fontWeight: 600 }}>{post.author?.name}</div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 2 }}>
             <TrustBadge score={post.author?.trust} verified={post.author?.verified} />
             <span style={{ fontSize: 11, color: "#4a5a7a" }}>{post.time}</span>
+            {(post.view_count > 0 || post.author_id === user?.id) && (
+              <span style={{ fontSize: 11, color: "#8090aa" }}>👁 {post.view_count || 0}</span>
+            )}
           </div>
         </div>
         <span style={{ padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 700, textTransform: "uppercase", background: post.type === "seek" ? "#2a7fff18" : "#00c8ff15", color: post.type === "seek" ? "#2a7fff" : "#00c8ff", border: `1px solid ${post.type === "seek" ? "#2a7fff44" : "#00c8ff33"}` }}>
           {post.type === "seek" ? "Suche" : "Biete"}
         </span>
       </div>
-      <div style={{ cursor: "pointer" }} onClick={() => setSelectedPost(post)}>
+      <div style={{ cursor: "pointer" }} onClick={() => openPostDetail(post)}>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 7 }}>{post.title}</div>
         <div style={{ fontSize: 13, color: "#8090aa", lineHeight: 1.6, marginBottom: 10, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{post.description}</div>
       </div>
@@ -1663,7 +1676,10 @@ export default function App() {
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 5, color: "#000" }}>{post.title}</div>
                 <div style={{ fontSize: 12, color: "#2a4a6a", lineHeight: 1.5, marginBottom: 10 }}>{post.description}</div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 11, color: post.status === "active" ? "#10b981" : "#4a5a7a", fontWeight: 600 }}>{post.status === "active" ? "● Aktiv" : "● Geschlossen"}</span>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: post.status === "active" ? "#10b981" : "#4a5a7a", fontWeight: 600 }}>{post.status === "active" ? "● Aktiv" : "● Geschlossen"}</span>
+                    <span style={{ fontSize: 11, color: "#8090aa" }}>👁 {post.view_count || 0}</span>
+                  </div>
                   <button onClick={() => deletePost(post.id)} style={{ ...s.btn("#ef444418"), color: "#ef4444", border: "1px solid #ef444433", padding: "6px 12px", fontSize: 12 }}>🗑 Löschen</button>
                 </div>
               </div>
