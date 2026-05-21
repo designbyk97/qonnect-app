@@ -98,6 +98,11 @@ export default function App() {
   const [showRatingForm, setShowRatingForm] = useState(null);
   const [ratingScore, setRatingScore] = useState(0);
   const [ratingComment, setRatingComment] = useState("");
+  const [profileTab, setProfileTab] = useState("posts");
+  const [showSettings, setShowSettings] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [receivedRatings, setReceivedRatings] = useState([]);
   const messagesEndRef = useRef(null);
   const realtimeRef = useRef(null);
   const avatarInputRef = useRef(null);
@@ -153,7 +158,7 @@ export default function App() {
     return () => supabase.removeChannel(channel);
   }, [user, screen]);
 
-  useEffect(() => { if (screen === "app" && activeTab === "profile" && user) { fetchOwnPosts(); fetchSavedPosts(); } }, [screen, activeTab, user]);
+  useEffect(() => { if (screen === "app" && activeTab === "profile" && user) { fetchOwnPosts(); fetchSavedPosts(); fetchReceivedRatings(); } }, [screen, activeTab, user]);
   useEffect(() => { if (screen === "app" && user) fetchNotifications(); }, [screen, user]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
@@ -661,6 +666,26 @@ export default function App() {
     }
     setShowRatingForm(null); setRatingScore(0); setRatingComment("");
     showToast("Bewertung abgegeben ✓");
+  };
+
+  const fetchReceivedRatings = async () => {
+    const { data } = await supabase.from("ratings").select("*, rater:profiles!ratings_rater_id_fkey(display_name, avatar_url)").eq("rated_id", user.id).order("created_at", { ascending: false });
+    if (data) setReceivedRatings(data);
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPassword || newPassword.length < 8) { showToast("Mind. 8 Zeichen", "#ef4444"); return; }
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) { showToast("Fehler: " + error.message, "#ef4444"); return; }
+    showToast("Passwort geändert ✓", "#10b981");
+    setNewPassword(""); setShowSettings(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    await supabase.from("posts").delete().eq("author_id", user.id);
+    await supabase.from("profiles").delete().eq("id", user.id);
+    await supabase.auth.signOut();
+    showToast("Account gelöscht", "#ef4444");
   };
 
   // ── PROFILE SAVE ─────────────────────────────────────────
@@ -1529,7 +1554,10 @@ export default function App() {
               }
               <div style={{ position: "absolute", bottom: 0, right: 0, width: 22, height: 22, background: "#2a7fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, border: "2px solid #ccdff5" }}>{uploadingAvatar ? "⏳" : "📷"}</div>
             </div>
+            <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setShowEditProfile(true)} style={{ ...s.btn("#e8f2ff"), border: "1px solid #c0d8f0", color: "#0f1f3d", padding: "8px 16px", fontSize: 13 }}>✏️ Bearbeiten</button>
+            <button onClick={() => { setShowSettings(true); setNewPassword(""); setConfirmDelete(false); }} style={{ width: 36, height: 36, borderRadius: 10, background: "#e8f2ff", border: "1px solid #c0d8f0", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>⚙️</button>
+          </div>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
@@ -1600,8 +1628,15 @@ export default function App() {
             <button onClick={() => setShowDatenschutz(true)} style={{ background: "none", border: "none", color: "#4a5a7a", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>Datenschutz</button>
           </div>
 
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, color: "#4a5a7a", marginBottom: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>Meine Posts ({ownPosts.length})</div>
+          {/* Profil-Tabs */}
+          <div style={{ display: "flex", background: "#e8f2ff", border: "1px solid #c0d8f0", borderRadius: 12, padding: 3, marginBottom: 14 }}>
+            {[{ k: "posts", l: `📝 Posts (${ownPosts.length})` }, { k: "saved", l: `🔖 Gespeichert` }, { k: "ratings", l: `⭐ Bewertungen` }].map(({ k, l }) => (
+              <button key={k} onClick={() => setProfileTab(k)} style={{ flex: 1, padding: "8px 0", borderRadius: 9, border: "none", fontFamily: "inherit", fontSize: 11, fontWeight: 600, cursor: "pointer", background: profileTab === k ? "#2a7fff" : "none", color: profileTab === k ? "#fff" : "#1a3a5a", transition: "all 0.2s" }}>{l}</button>
+            ))}
+          </div>
+
+          {/* Posts Tab */}
+          {profileTab === "posts" && <div style={{ marginBottom: 20 }}>
             {ownPosts.length === 0 ? (
               <div style={{ textAlign: "center", padding: "30px 20px", color: "#4a6a8a", background: "#e8f2ff", border: "1px solid #c0d8f0", borderRadius: 12 }}>
                 <div style={{ fontSize: 24, marginBottom: 8 }}>📭</div>
@@ -1623,7 +1658,39 @@ export default function App() {
                 </div>
               </div>
             ))}
-          </div>
+          </div>}
+
+          {/* Gespeichert Tab */}
+          {profileTab === "saved" && <div style={{ marginBottom: 20 }}>
+            {savedPostsList.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "30px 20px", color: "#4a6a8a", background: "#e8f2ff", border: "1px solid #c0d8f0", borderRadius: 12 }}>
+                <div style={{ fontSize: 24, marginBottom: 8 }}>🔖</div>
+                <div style={{ fontSize: 13 }}>Keine gespeicherten Posts</div>
+              </div>
+            ) : savedPostsList.map(post => renderPostCard(post))}
+          </div>}
+
+          {/* Bewertungen Tab */}
+          {profileTab === "ratings" && <div style={{ marginBottom: 20 }}>
+            {receivedRatings.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "30px 20px", color: "#4a6a8a", background: "#e8f2ff", border: "1px solid #c0d8f0", borderRadius: 12 }}>
+                <div style={{ fontSize: 24, marginBottom: 8 }}>⭐</div>
+                <div style={{ fontSize: 13 }}>Noch keine Bewertungen</div>
+              </div>
+            ) : receivedRatings.map(r => (
+              <div key={r.id} style={{ background: "#e8f2ff", border: "1px solid #c0d8f0", borderRadius: 12, padding: 14, marginBottom: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <Avatar url={r.rater?.avatar_url} initials={(r.rater?.display_name || "?").substring(0, 2).toUpperCase()} size={36} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#0f1f3d" }}>{r.rater?.display_name || "Anonym"}</div>
+                    <div style={{ fontSize: 11, color: "#4a6a8a" }}>{timeAgo(r.created_at)}</div>
+                  </div>
+                  <div style={{ fontSize: 16 }}>{"⭐".repeat(r.score)}</div>
+                </div>
+                {r.comment && <div style={{ fontSize: 13, color: "#1a3a5a", lineHeight: 1.6, background: "#ccdff5", borderRadius: 8, padding: "8px 12px" }}>{r.comment}</div>}
+              </div>
+            ))}
+          </div>}
         </div>
       </>
     );
@@ -1890,6 +1957,41 @@ export default function App() {
     );
   };
 
+  // ── SETTINGS ─────────────────────────────────────────────
+  const renderSettings = () => {
+    if (!showSettings) return null;
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={e => { if (e.target === e.currentTarget) setShowSettings(false); }}>
+        <div style={{ background: "#e8f2ff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 640, padding: 24, paddingBottom: 36 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 20, color: "#0f1f3d" }}>⚙️ Einstellungen</div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={s.label}>Neues Passwort</label>
+            <input style={{ ...s.input, marginBottom: 10 }} type="password" placeholder="Mind. 8 Zeichen" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+            <button onClick={handleChangePassword} style={{ ...s.btn(), width: "100%", padding: 12, borderRadius: 10, fontSize: 14 }}>Passwort ändern</button>
+          </div>
+
+          <div style={{ borderTop: "1px solid #c0d8f0", paddingTop: 20, marginBottom: 16 }}>
+            <button onClick={handleLogout} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #c0d8f0", background: "#ccdff5", color: "#1a3a5a", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 10 }}>Abmelden</button>
+            {!confirmDelete ? (
+              <button onClick={() => setConfirmDelete(true)} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #ef444433", background: "#ef444410", color: "#ef4444", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Account löschen</button>
+            ) : (
+              <div style={{ background: "#ef444410", border: "1px solid #ef444433", borderRadius: 10, padding: 14 }}>
+                <div style={{ fontSize: 13, color: "#ef4444", fontWeight: 600, marginBottom: 10 }}>Bist du sicher? Alle Daten werden gelöscht.</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #c0d8f0", background: "#e8f2ff", fontFamily: "inherit", fontSize: 13, cursor: "pointer" }}>Abbrechen</button>
+                  <button onClick={handleDeleteAccount} style={{ flex: 1, padding: 10, borderRadius: 8, border: "none", background: "#ef4444", color: "#fff", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Ja, löschen</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button onClick={() => setShowSettings(false)} style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #c0d8f0", background: "none", color: "#4a5a7a", fontFamily: "inherit", fontSize: 13, cursor: "pointer" }}>Schließen</button>
+        </div>
+      </div>
+    );
+  };
+
   // ── RATING FORM ───────────────────────────────────────────
   const renderRatingForm = () => {
     if (!showRatingForm) return null;
@@ -1980,6 +2082,7 @@ export default function App() {
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
       {showAdmin && renderAdmin()}
+      {showSettings && renderSettings()}
       {showRatingForm && renderRatingForm()}
       {showReportForm && renderReportForm()}
       {showOfferForm && renderOfferForm()}
