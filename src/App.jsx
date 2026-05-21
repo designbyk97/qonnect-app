@@ -35,6 +35,8 @@ export default function App() {
   const [registeredWithEmail, setRegisteredWithEmail] = useState(false);
   const [cookieConsent, setCookieConsent] = useState(() => localStorage.getItem("cookie_consent"));
   const [showPushPrompt, setShowPushPrompt] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
   const [awaitingEmailConfirm, setAwaitingEmailConfirm] = useState(null);
   const [authMode, setAuthMode] = useState("login");
   const [showForgotPw, setShowForgotPw] = useState(false);
@@ -153,6 +155,7 @@ export default function App() {
       window.OneSignalDeferred.push(loginOneSignal);
     }
     supabase.from("profiles").update({ last_seen: new Date().toISOString() }).eq("id", user.id);
+    if (!localStorage.getItem("onboarding_done")) { setShowOnboarding(true); setOnboardingStep(0); }
     const interval = setInterval(() => {
       fetchOffers(); fetchUnreadCount();
       supabase.from("profiles").update({ last_seen: new Date().toISOString() }).eq("id", user.id);
@@ -2128,6 +2131,7 @@ export default function App() {
           </div>
 
           <div style={{ borderTop: "1px solid #c0d8f0", paddingTop: 20, marginBottom: 16 }}>
+            <a href="mailto:contact@startqonnect.com?subject=Support-Anfrage" style={{ display: "block", width: "100%", padding: 12, borderRadius: 10, border: "1px solid #2a7fff44", background: "#2a7fff12", color: "#2a7fff", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 10, textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}>💬 Support kontaktieren</a>
             <button onClick={handleLogout} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #c0d8f0", background: "#ccdff5", color: "#1a3a5a", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 10 }}>Abmelden</button>
             {!confirmDelete ? (
               <button onClick={() => setConfirmDelete(true)} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #ef444433", background: "#ef444410", color: "#ef4444", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Account löschen</button>
@@ -2420,6 +2424,36 @@ export default function App() {
       )}
 
 {toast && <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: toast.color, color: "#fff", padding: "10px 20px", borderRadius: 100, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", zIndex: 300, boxShadow: "0 4px 20px #0008" }}>{toast.msg}</div>}
+
+      {showOnboarding && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(7,9,15,0.92)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#e8f2ff", borderRadius: 24, padding: 32, maxWidth: 380, width: "100%", textAlign: "center", border: "1px solid #c0d8f0" }}>
+            {onboardingStep === 0 && <>
+              <div style={{ fontSize: 52, marginBottom: 16 }}>🎯</div>
+              <div style={{ fontFamily: "'Orbitron', monospace", fontSize: 18, fontWeight: 900, color: "#0f1f3d", marginBottom: 12 }}>Willkommen bei <span style={{ color: "#2a7fff" }}>q</span>onnect</div>
+              <div style={{ fontSize: 14, color: "#4a6a8a", lineHeight: 1.7, marginBottom: 24 }}>Die B2B-Plattform die Unternehmen, Freelancer und Experten direkt verbindet — problem-first, ohne Umwege.</div>
+            </>}
+            {onboardingStep === 1 && <>
+              <div style={{ fontSize: 52, marginBottom: 16 }}>📝</div>
+              <div style={{ fontFamily: "'Orbitron', monospace", fontSize: 16, fontWeight: 900, color: "#0f1f3d", marginBottom: 12 }}>Problem posten</div>
+              <div style={{ fontSize: 14, color: "#4a6a8a", lineHeight: 1.7, marginBottom: 24 }}>Beschreibe was du brauchst oder was du anbietest. Andere Nutzer sehen deinen Post im Feed und können sich direkt mit einem Angebot bewerben.</div>
+            </>}
+            {onboardingStep === 2 && <>
+              <div style={{ fontSize: 52, marginBottom: 16 }}>🤝</div>
+              <div style={{ fontFamily: "'Orbitron', monospace", fontSize: 16, fontWeight: 900, color: "#0f1f3d", marginBottom: 12 }}>Match & Chat</div>
+              <div style={{ fontSize: 14, color: "#4a6a8a", lineHeight: 1.7, marginBottom: 24 }}>Nimm ein Angebot an — der Chat öffnet sich automatisch. Kein Suchen, kein Vermittler, nur direkte Zusammenarbeit.</div>
+            </>}
+            <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 24 }}>
+              {[0,1,2].map(i => <div key={i} style={{ width: i === onboardingStep ? 20 : 8, height: 8, borderRadius: 4, background: i === onboardingStep ? "#2a7fff" : "#c0d8f0", transition: "all 0.3s" }} />)}
+            </div>
+            {onboardingStep < 2
+              ? <button onClick={() => setOnboardingStep(s => s + 1)} style={{ width: "100%", padding: "14px", background: "#2a7fff", color: "#fff", border: "none", borderRadius: 12, fontFamily: "inherit", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Weiter →</button>
+              : <button onClick={() => { localStorage.setItem("onboarding_done", "1"); setShowOnboarding(false); }} style={{ width: "100%", padding: "14px", background: "#2a7fff", color: "#fff", border: "none", borderRadius: 12, fontFamily: "inherit", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Los geht's ✓</button>
+            }
+            {onboardingStep > 0 && <button onClick={() => setOnboardingStep(s => s - 1)} style={{ marginTop: 10, background: "none", border: "none", color: "#8090aa", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>← Zurück</button>}
+          </div>
+        </div>
+      )}
 
       {showPushPrompt && (
         <div style={{ position: "fixed", bottom: cookieConsent ? 0 : 120, left: 0, right: 0, zIndex: 410, background: "#0f1f3d", borderTop: "1px solid #2a7fff44", padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, maxWidth: 640, margin: "0 auto" }}>
