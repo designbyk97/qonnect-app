@@ -805,10 +805,14 @@ export default function App() {
     if (!msgInput.trim() || !activeChat) return;
     const content = msgInput;
     const tempId = `temp_${Date.now()}`;
+    const recipientId = activeChat.seeker_id === user.id ? activeChat.provider_id : activeChat.seeker_id;
     setMsgInput("");
     setChatMessages(prev => [...prev, { id: tempId, me: true, content, is_read: false, created_at: new Date().toISOString(), temp: true }]);
     const { data } = await supabase.from("messages").insert({ match_id: activeChat.id, sender_id: user.id, content, is_read: false }).select().single();
-    if (data) setChatMessages(prev => prev.map(m => m.id === tempId ? { ...data, me: true } : m));
+    if (data) {
+      setChatMessages(prev => prev.map(m => m.id === tempId ? { ...data, me: true } : m));
+      sendNotification(recipientId, "message", profile?.display_name || "Neue Nachricht", content.length > 60 ? content.substring(0, 60) + "..." : content, activeChat.id);
+    }
   };
 
   // ── HELPERS ──────────────────────────────────────────────
