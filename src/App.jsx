@@ -140,7 +140,7 @@ export default function App() {
 
   useEffect(() => {
     if (!user || screen !== "app") return;
-    const channel = supabase.channel("global_messages_badge")
+    const channel = supabase.channel("global_realtime_badge")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
           const msg = payload.new;
@@ -153,6 +153,15 @@ export default function App() {
               : c
             ));
           }
+        }
+      )
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "offers", filter: `receiver_id=eq.${user.id}` },
+        () => { fetchOffers(); }
+      )
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "matches" },
+        (payload) => {
+          const m = payload.new;
+          if (m.seeker_id === user.id || m.provider_id === user.id) { fetchChats(); }
         }
       )
       .subscribe();
@@ -199,8 +208,7 @@ export default function App() {
       .order("created_at", { ascending: false }).limit(50);
     if (activeCategory !== "Alle") query = query.contains("tags", [activeCategory]);
     const { data, error } = await query;
-    if (error) { showToast("Feed-Fehler: " + error.message, "#ef4444"); setPosts([]); return; }
-    showToast(`Posts geladen: ${data?.length ?? "null"} (tab: ${feedTab})`, "#2a7fff");
+    if (error) { setPosts([]); return; }
     if (data && data.length > 0) {
       setPosts(data.filter(p => !p.status || p.status === "active").map(p => ({
         ...p,
@@ -2209,12 +2217,18 @@ export default function App() {
           {/* MOBIL – Instagram-Style Bottom Nav */}
           {isMobile && (
             <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 110, background: "#fff", borderTop: "1px solid #c0d8f0", display: "flex", alignItems: "center", justifyContent: "space-around", padding: "8px 0 12px", boxShadow: "0 -4px 20px #1a3a6a12" }}>
-              {[{ k: "home", icon: "🏠", label: "Feed" }, { k: "chat", icon: "💬", label: "Chat" }].map(({ k, icon, label }) => (
-                <button key={k} onClick={() => { setShowPostForm(false); setActiveTab(k); }} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}>
-                  <span style={{ fontSize: 22 }}>{icon}</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: activeTab === k && !showPostForm ? "#2a7fff" : "#8090aa", fontFamily: "inherit" }}>{label}</span>
-                </button>
-              ))}
+              {[{ k: "home", icon: "🏠", label: "Feed" }, { k: "chat", icon: "💬", label: "Chat" }].map(({ k, icon, label }) => {
+                const chatBadge = k === "chat" ? unreadCount + incomingOffersCount : 0;
+                return (
+                  <button key={k} onClick={() => { setShowPostForm(false); setActiveTab(k); }} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}>
+                    <span style={{ position: "relative", fontSize: 22 }}>
+                      {icon}
+                      {chatBadge > 0 && <span style={{ position: "absolute", top: -4, right: -6, background: "#ef4444", color: "#fff", borderRadius: "50%", fontSize: 9, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{chatBadge > 9 ? "9+" : chatBadge}</span>}
+                    </span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: activeTab === k && !showPostForm ? "#2a7fff" : "#8090aa", fontFamily: "inherit" }}>{label}</span>
+                  </button>
+                );
+              })}
               <button onClick={() => setShowPostForm(true)} style={{ width: 48, height: 48, borderRadius: 16, background: "#2a7fff", border: "none", fontSize: 24, color: "#fff", cursor: "pointer", boxShadow: "0 4px 16px #2a7fff50", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>+</button>
               {[{ k: "profile", icon: "👤", label: "Profil" }].map(({ k, icon, label }) => (
                 <button key={k} onClick={() => { setShowPostForm(false); setActiveTab(k); }} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}>
@@ -2238,12 +2252,18 @@ export default function App() {
             </button>
 
             {navVariant === 7 && <div style={{ position: "fixed", bottom: 16, left: 16, zIndex: 110, display: "flex", flexDirection: "column", gap: 6, background: "#fff", borderRadius: 20, padding: 10, boxShadow: "0 8px 32px #2a7fff28", border: "1px solid #c0d8f0" }}>
-              {[{ k: "home", icon: "🏠", label: "Feed" }, { k: "chat", icon: "💬", label: "Chat" }].map(({ k, icon, label }) => (
-                <button key={k} onClick={() => { setShowPostForm(false); setActiveTab(k); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 12, border: "none", background: activeTab === k && !showPostForm ? "#2a7fff" : "#e8f2ff", cursor: "pointer", minWidth: 110 }}>
-                  <span style={{ fontSize: 18 }}>{icon}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: activeTab === k && !showPostForm ? "#fff" : "#1a3a5a" }}>{label}</span>
-                </button>
-              ))}
+              {[{ k: "home", icon: "🏠", label: "Feed" }, { k: "chat", icon: "💬", label: "Chat" }].map(({ k, icon, label }) => {
+                const chatBadge = k === "chat" ? unreadCount + incomingOffersCount : 0;
+                return (
+                  <button key={k} onClick={() => { setShowPostForm(false); setActiveTab(k); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 12, border: "none", background: activeTab === k && !showPostForm ? "#2a7fff" : "#e8f2ff", cursor: "pointer", minWidth: 110 }}>
+                    <span style={{ position: "relative", fontSize: 18 }}>
+                      {icon}
+                      {chatBadge > 0 && <span style={{ position: "absolute", top: -4, right: -6, background: "#ef4444", color: "#fff", borderRadius: "50%", fontSize: 9, fontWeight: 700, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 2px" }}>{chatBadge > 9 ? "9+" : chatBadge}</span>}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: activeTab === k && !showPostForm ? "#fff" : "#1a3a5a" }}>{label}</span>
+                  </button>
+                );
+              })}
               <button onClick={() => setShowPostForm(true)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 12, border: "none", background: "#2a7fff", cursor: "pointer", boxShadow: "0 4px 12px #2a7fff50" }}>
                 <span style={{ fontSize: 18, color: "#fff" }}>✚</span>
                 <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Neu</span>
@@ -2257,11 +2277,15 @@ export default function App() {
             </div>}
 
             {navVariant === 8 && <div style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 620, zIndex: 110, display: "flex", justifyContent: "center", gap: 8, padding: "0 16px" }}>
-              {[{ k: "home", icon: "🏠" }, { k: "chat", icon: "💬" }].map(({ k, icon }) => (
-                <button key={k} onClick={() => { setShowPostForm(false); setActiveTab(k); }} style={{ flex: 1, height: 52, borderRadius: 16, border: `2px solid ${activeTab === k && !showPostForm ? "#2a7fff" : "#c0d8f0"}`, background: activeTab === k && !showPostForm ? "#2a7fff" : "#fff", cursor: "pointer", fontSize: 22, boxShadow: "0 4px 16px #1a3a6a15", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ filter: activeTab === k && !showPostForm ? "brightness(10)" : "none" }}>{icon}</span>
-                </button>
-              ))}
+              {[{ k: "home", icon: "🏠" }, { k: "chat", icon: "💬" }].map(({ k, icon }) => {
+                const chatBadge = k === "chat" ? unreadCount + incomingOffersCount : 0;
+                return (
+                  <button key={k} onClick={() => { setShowPostForm(false); setActiveTab(k); }} style={{ flex: 1, height: 52, borderRadius: 16, border: `2px solid ${activeTab === k && !showPostForm ? "#2a7fff" : "#c0d8f0"}`, background: activeTab === k && !showPostForm ? "#2a7fff" : "#fff", cursor: "pointer", fontSize: 22, boxShadow: "0 4px 16px #1a3a6a15", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                    <span style={{ filter: activeTab === k && !showPostForm ? "brightness(10)" : "none" }}>{icon}</span>
+                    {chatBadge > 0 && <span style={{ position: "absolute", top: 6, right: 10, background: "#ef4444", color: "#fff", borderRadius: "50%", fontSize: 9, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{chatBadge > 9 ? "9+" : chatBadge}</span>}
+                  </button>
+                );
+              })}
               <button onClick={() => setShowPostForm(true)} style={{ flex: 1.4, height: 52, background: "#2a7fff", borderRadius: 16, border: "none", fontSize: 26, color: "#fff", cursor: "pointer", boxShadow: "0 6px 20px #2a7fff50", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
               {[{ k: "offer", icon: "💡" }, { k: "profile", icon: "👤" }].map(({ k, icon }) => (
                 <button key={k} onClick={() => { if (k === "offer") { setPostType("offer"); setShowPostForm(true); } else { setShowPostForm(false); setActiveTab(k); } }} style={{ flex: 1, height: 52, borderRadius: 16, border: `2px solid ${activeTab === k && !showPostForm ? "#2a7fff" : "#c0d8f0"}`, background: activeTab === k && !showPostForm ? "#2a7fff" : "#fff", cursor: "pointer", fontSize: 22, boxShadow: "0 4px 16px #1a3a6a15", display: "flex", alignItems: "center", justifyContent: "center" }}>
