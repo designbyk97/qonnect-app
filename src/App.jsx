@@ -446,20 +446,24 @@ export default function App() {
     if (!authForm.email || !authForm.password || !authForm.name) { showToast("Alle Felder ausfüllen", "#ef4444"); return; }
     if (authForm.password.length < 8) { showToast("Passwort: mindestens 8 Zeichen", "#ef4444"); return; }
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({ email: authForm.email, password: authForm.password });
-    if (error) { showToast(error.message, "#ef4444"); setLoading(false); return; }
-    if (data.user) {
-      await supabase.from("profiles").insert({ id: data.user.id, account_type: authForm.type, display_name: authForm.name, trust_score: 20, is_verified: false, posts_today: 0 });
-      setOnboardingForm({ name: authForm.name, type: authForm.type });
-      setRegisteredWithEmail(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({ email: authForm.email, password: authForm.password });
+      if (error) { showToast(error.message, "#ef4444"); setLoading(false); return; }
+      if (data?.user) {
+        await supabase.from("profiles").insert({ id: data.user.id, account_type: authForm.type, display_name: authForm.name, trust_score: 20, is_verified: false, posts_today: 0 });
+        setOnboardingForm({ name: authForm.name, type: authForm.type });
+        setRegisteredWithEmail(true);
+      }
+      await supabase.auth.signOut();
+      setUser(null);
+      setProfile(null);
+      setScreen("auth");
+      setAwaitingEmailConfirm(authForm.email);
+      showToast("E-Mail verschickt — bitte bestätigen ✓", "#10b981");
+    } catch (e) {
+      showToast("Registrierung fehlgeschlagen: " + (e?.message || "Unbekannter Fehler"), "#ef4444");
     }
-    await supabase.auth.signOut();
     setLoading(false);
-    setUser(null);
-    setProfile(null);
-    setScreen("auth");
-    setAwaitingEmailConfirm(authForm.email);
-    showToast("E-Mail verschickt — bitte bestätigen ✓", "#10b981");
   };
 
   const handleForgotPassword = async () => {
