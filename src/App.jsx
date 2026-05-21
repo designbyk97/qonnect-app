@@ -452,6 +452,8 @@ export default function App() {
       await supabase.from("profiles").insert({ id: data.user.id, account_type: authForm.type, display_name: authForm.name, trust_score: 20, is_verified: false, posts_today: 0 });
       setOnboardingForm({ name: authForm.name, type: authForm.type });
       setRegisteredWithEmail(true);
+      await supabase.auth.signOut();
+      setScreen("auth");
       setAwaitingEmailConfirm(authForm.email);
     }
     setLoading(false);
