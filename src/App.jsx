@@ -145,6 +145,15 @@ export default function App() {
         setShowPushPrompt(true);
       }
     }, 2000);
+    // Link OneSignal subscription to this user ID
+    try {
+      if (window.OneSignal?.login) {
+        window.OneSignal.login(user.id);
+      } else {
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(async (OS) => { try { await OS.login(user.id); } catch(e) {} });
+      }
+    } catch(e) {}
     const interval = setInterval(() => { fetchOffers(); fetchUnreadCount(); }, 20000);
     return () => clearInterval(interval);
   }, [user, screen]);
