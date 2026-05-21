@@ -194,7 +194,7 @@ export default function App() {
 
   const fetchPosts = async () => {
     let query = supabase.from("posts")
-      .select("*, profiles(id, display_name, trust_score, is_verified, account_type, avatar_url)")
+      .select("*, profiles!posts_author_id_fkey(id, display_name, trust_score, is_verified, account_type, avatar_url)")
       .eq("type", feedTab)
       .order("created_at", { ascending: false }).limit(50);
     if (activeCategory !== "Alle") query = query.contains("tags", [activeCategory]);
