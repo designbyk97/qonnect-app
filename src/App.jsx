@@ -2131,7 +2131,7 @@ export default function App() {
           </div>
 
           <div style={{ borderTop: "1px solid #c0d8f0", paddingTop: 20, marginBottom: 16 }}>
-            <a href="mailto:contact@startqonnect.com?subject=Support-Anfrage" style={{ display: "block", width: "100%", padding: 12, borderRadius: 10, border: "1px solid #2a7fff44", background: "#2a7fff12", color: "#2a7fff", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 10, textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}>💬 Support kontaktieren</a>
+            <button onClick={() => { navigator.clipboard?.writeText("contact@startqonnect.com"); showToast("E-Mail kopiert: contact@startqonnect.com ✓"); }} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #2a7fff44", background: "#2a7fff12", color: "#2a7fff", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 10 }}>💬 Support — contact@startqonnect.com</button>
             <button onClick={handleLogout} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #c0d8f0", background: "#ccdff5", color: "#1a3a5a", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 10 }}>Abmelden</button>
             {!confirmDelete ? (
               <button onClick={() => setConfirmDelete(true)} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #ef444433", background: "#ef444410", color: "#ef4444", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Account löschen</button>
