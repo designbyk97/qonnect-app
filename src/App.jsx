@@ -33,6 +33,7 @@ export default function App() {
   const [screen, setScreen] = useState("auth");
   const [onboardingForm, setOnboardingForm] = useState({ name: "", type: "freelancer" });
   const [registeredWithEmail, setRegisteredWithEmail] = useState(false);
+  const [cookieConsent, setCookieConsent] = useState(() => localStorage.getItem("cookie_consent"));
   const [awaitingEmailConfirm, setAwaitingEmailConfirm] = useState(null);
   const [authMode, setAuthMode] = useState("login");
   const [showForgotPw, setShowForgotPw] = useState(false);
@@ -143,6 +144,26 @@ export default function App() {
   }, [user, screen]);
 
   const activeChatRef = useRef(null);
+
+  useEffect(() => {
+    if (cookieConsent === "accepted") loadGA();
+  }, [cookieConsent]);
+
+  const loadGA = () => {
+    if (window.__gaLoaded) return;
+    window.__gaLoaded = true;
+    const s = document.createElement("script");
+    s.src = "https://www.googletagmanager.com/gtag/js?id=G-83W7ZCP11Q";
+    s.async = true;
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function() { window.dataLayer.push(arguments); };
+    window.gtag("js", new Date());
+    window.gtag("config", "G-83W7ZCP11Q");
+  };
+
+  const acceptCookies = () => { localStorage.setItem("cookie_consent", "accepted"); setCookieConsent("accepted"); };
+  const declineCookies = () => { localStorage.setItem("cookie_consent", "declined"); setCookieConsent("declined"); };
   useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
 
   useEffect(() => {
@@ -2307,6 +2328,19 @@ export default function App() {
       )}
 
 {toast && <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: toast.color, color: "#fff", padding: "10px 20px", borderRadius: 100, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", zIndex: 300, boxShadow: "0 4px 20px #0008" }}>{toast.msg}</div>}
+
+      {!cookieConsent && (
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 400, background: "#0f1f3d", borderTop: "1px solid #2a7fff44", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12, maxWidth: 640, margin: "0 auto" }}>
+          <div style={{ fontSize: 13, color: "#c8dcf8", lineHeight: 1.6 }}>
+            🍪 Wir nutzen Cookies für den Betrieb der Plattform und Google Analytics zur anonymen Nutzungsanalyse. Mehr in unserer{" "}
+            <span onClick={() => setShowDatenschutz(true)} style={{ color: "#2a7fff", cursor: "pointer", textDecoration: "underline" }}>Datenschutzerklärung</span>.
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={acceptCookies} style={{ flex: 1, padding: "10px 0", background: "#2a7fff", color: "#fff", border: "none", borderRadius: 10, fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Alle akzeptieren</button>
+            <button onClick={declineCookies} style={{ flex: 1, padding: "10px 0", background: "transparent", color: "#8090aa", border: "1px solid #2a7fff33", borderRadius: 10, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Nur notwendige</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
