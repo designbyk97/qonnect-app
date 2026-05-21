@@ -779,7 +779,7 @@ export default function App() {
   };
 
   // ── EMAIL CONFIRM SCREEN ─────────────────────────────────
-  if (screen === "auth" && awaitingEmailConfirm) return (
+  if (awaitingEmailConfirm) return (
     <div style={{ ...s.page, alignItems: "center", justifyContent: "center", padding: "20px 16px" }}>
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       <div style={{ width: "100%", maxWidth: 400, textAlign: "center" }}>
