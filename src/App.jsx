@@ -145,10 +145,13 @@ export default function App() {
         setShowPushPrompt(true);
       }
     }, 2000);
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push(async (OS) => {
-      try { await OS.login(user.id); } catch(e) {}
-    });
+    const loginOneSignal = async (OS) => { try { await OS.login(user.id); } catch(e) {} };
+    if (window.OneSignal?.login) {
+      loginOneSignal(window.OneSignal);
+    } else {
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(loginOneSignal);
+    }
     const interval = setInterval(() => { fetchOffers(); fetchUnreadCount(); }, 20000);
     return () => clearInterval(interval);
   }, [user, screen]);
@@ -527,15 +530,20 @@ export default function App() {
   const requestPushPermission = async () => {
     try {
       if (Notification.permission === "denied") return;
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      window.OneSignalDeferred.push(async (OS) => {
+      const run = async (OS) => {
         try {
           if (!OS.Notifications.permission) {
             await OS.Notifications.requestPermission();
           }
-          await OS.login(user.id);
+          if (user?.id) await OS.login(user.id);
         } catch(e) {}
-      });
+      };
+      if (window.OneSignal?.Notifications) {
+        await run(window.OneSignal);
+      } else {
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(run);
+      }
     } catch (e) {}
   };
 
