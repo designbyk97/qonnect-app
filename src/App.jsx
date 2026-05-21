@@ -134,6 +134,13 @@ export default function App() {
     }
   }, [screen, activeTab, activeChat]);
   useEffect(() => { if (screen === "app" && user) fetchUnreadCount(); }, [screen, user, activeChat]);
+  useEffect(() => {
+    if (!user || screen !== "app") return;
+    fetchOffers();
+    fetchChats();
+    const interval = setInterval(() => { fetchOffers(); fetchUnreadCount(); }, 20000);
+    return () => clearInterval(interval);
+  }, [user, screen]);
 
   const activeChatRef = useRef(null);
   useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
