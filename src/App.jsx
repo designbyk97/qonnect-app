@@ -145,15 +145,10 @@ export default function App() {
         setShowPushPrompt(true);
       }
     }, 2000);
-    // Link OneSignal subscription to this user ID
-    try {
-      if (window.OneSignal?.login) {
-        window.OneSignal.login(user.id);
-      } else {
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        window.OneSignalDeferred.push(async (OS) => { try { await OS.login(user.id); } catch(e) {} });
-      }
-    } catch(e) {}
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(async (OS) => {
+      try { await OS.login(user.id); } catch(e) {}
+    });
     const interval = setInterval(() => { fetchOffers(); fetchUnreadCount(); }, 20000);
     return () => clearInterval(interval);
   }, [user, screen]);
@@ -532,18 +527,15 @@ export default function App() {
   const requestPushPermission = async () => {
     try {
       if (Notification.permission === "denied") return;
-      if (window.OneSignal?.Notifications) {
-        if (!window.OneSignal.Notifications.permission) {
-          await window.OneSignal.Notifications.requestPermission();
-        }
-      } else {
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        window.OneSignalDeferred.push(async (OneSignal) => {
-          if (!OneSignal.Notifications.permission) {
-            await OneSignal.Notifications.requestPermission();
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async (OS) => {
+        try {
+          if (!OS.Notifications.permission) {
+            await OS.Notifications.requestPermission();
           }
-        });
-      }
+          await OS.login(user.id);
+        } catch(e) {}
+      });
     } catch (e) {}
   };
 
@@ -727,6 +719,16 @@ export default function App() {
   const markAllRead = async () => {
     await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
     setRealNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+  };
+
+  const deleteNotification = async (id) => {
+    await supabase.from("notifications").delete().eq("id", id);
+    setRealNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const deleteAllNotifications = async () => {
+    await supabase.from("notifications").delete().eq("user_id", user.id);
+    setRealNotifications([]);
   };
 
   const sendNotification = async (userId, type, title, body, relatedId) => {
@@ -2036,8 +2038,10 @@ export default function App() {
         <div style={{ ...s.topBar, position: "sticky", flexShrink: 0 }}>
           <button onClick={() => setShowNotifications(false)} style={{ background: "none", border: "none", color: "#2a7fff", fontSize: 20, cursor: "pointer" }}>←</button>
           <span style={{ fontSize: 15, fontWeight: 700 }}>Benachrichtigungen</span>
-          {unread > 0 && <button onClick={markAllRead} style={{ background: "none", border: "none", color: "#2a7fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Alle lesen</button>}
-          {unread === 0 && <div style={{ width: 60 }} />}
+          {realNotifications.length > 0
+            ? <button onClick={deleteAllNotifications} style={{ background: "none", border: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Alle löschen</button>
+            : <div style={{ width: 70 }} />
+          }
         </div>
         <div style={{ flex: 1, overflowY: "auto", scrollbarWidth: "none" }}>
           {realNotifications.length === 0
@@ -2053,7 +2057,10 @@ export default function App() {
                   {n.body && <div style={{ fontSize: 12, color: "#4a6a8a", marginBottom: 3 }}>{n.body}</div>}
                   <div style={{ fontSize: 11, color: "#8090aa" }}>{timeAgo(n.created_at)}</div>
                 </div>
-                {!n.is_read && <div style={{ width: 8, height: 8, background: "#2a7fff", borderRadius: "50%", flexShrink: 0, marginTop: 4 }} />}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  {!n.is_read && <div style={{ width: 8, height: 8, background: "#2a7fff", borderRadius: "50%" }} />}
+                  <button onClick={() => deleteNotification(n.id)} style={{ background: "none", border: "none", color: "#8090aa", fontSize: 16, cursor: "pointer", padding: 0, lineHeight: 1 }}>✕</button>
+                </div>
               </div>
             ))
           }
