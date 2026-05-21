@@ -1540,7 +1540,6 @@ export default function App() {
         <div onClick={() => coverInputRef.current.click()} style={{ height: 120, background: profile?.cover_url ? `url(${profile.cover_url}) center/cover` : "linear-gradient(135deg, #b8d4f0, #90bce8)", position: "relative", cursor: "pointer" }}>
           {!profile?.cover_url && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#2a3a5a", fontSize: 12, fontWeight: 600 }}>{uploadingCover ? "Wird hochgeladen..." : "📷 Titelbild hinzufügen"}</div>}
           {profile?.cover_url && <div style={{ position: "absolute", bottom: 8, right: 12, background: "rgba(0,0,0,0.6)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "#fff" }}>✏️ Ändern</div>}
-          <button onClick={e => { e.stopPropagation(); handleLogout(); }} style={{ position: "absolute", top: 12, right: 16, fontSize: 12, color: "#ef4444", background: "rgba(0,0,0,0.5)", border: "1px solid #ef444433", borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontFamily: "inherit" }}>Abmelden</button>
         </div>
 
         <div style={{ padding: "0 16px", marginTop: -28 }}>
