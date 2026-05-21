@@ -515,13 +515,22 @@ export default function App() {
     setShowForgotPw(false);
   };
 
-  const requestPushPermission = () => {
-    if (window.OneSignal) {
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      window.OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.Notifications.requestPermission();
-      });
-    }
+  const requestPushPermission = async () => {
+    try {
+      if (Notification.permission === "denied") return;
+      if (window.OneSignal?.Notifications) {
+        if (!window.OneSignal.Notifications.permission) {
+          await window.OneSignal.Notifications.requestPermission();
+        }
+      } else {
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(async (OneSignal) => {
+          if (!OneSignal.Notifications.permission) {
+            await OneSignal.Notifications.requestPermission();
+          }
+        });
+      }
+    } catch (e) {}
   };
 
   const handleOnboarding = async () => {
