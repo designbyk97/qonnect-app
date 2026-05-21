@@ -68,7 +68,7 @@ export default function App() {
   const [stats, setStats] = useState({ activeNow: 0, totalMembers: 0, postsToday: 0 });
   const [postForm, setPostForm] = useState({ title: "", description: "", budget: "", duration: "", location: "", tags: "" });
   const [authForm, setAuthForm] = useState({ email: "", password: "", name: "", type: "freelancer" });
-  const [editForm, setEditForm] = useState({ bio: "", linkedin_url: "", skills: "", location: "" });
+  const [editForm, setEditForm] = useState({ bio: "", linkedin_url: "", skills: "", location: "", is_available: true });
   const [showOfferForm, setShowOfferForm] = useState(null);
   const [showOfferDetail, setShowOfferDetail] = useState(null);
   const [offers, setOffers] = useState([]);
@@ -152,7 +152,11 @@ export default function App() {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(loginOneSignal);
     }
-    const interval = setInterval(() => { fetchOffers(); fetchUnreadCount(); }, 20000);
+    supabase.from("profiles").update({ last_seen: new Date().toISOString() }).eq("id", user.id);
+    const interval = setInterval(() => {
+      fetchOffers(); fetchUnreadCount();
+      supabase.from("profiles").update({ last_seen: new Date().toISOString() }).eq("id", user.id);
+    }, 60000);
     return () => clearInterval(interval);
   }, [user, screen]);
 
@@ -225,7 +229,7 @@ export default function App() {
     }
     if (data && data.display_name) {
       setProfile(data);
-      setEditForm({ bio: data.bio || "", linkedin_url: data.linkedin_url || "", skills: (data.skills || []).join(", "), location: data.location || "" });
+      setEditForm({ bio: data.bio || "", linkedin_url: data.linkedin_url || "", skills: (data.skills || []).join(", "), location: data.location || "", is_available: data.is_available !== false });
       setEditProjects(data.projects || []);
       setScreen("app");
     } else {
@@ -783,15 +787,25 @@ export default function App() {
     showToast("Account gelöscht", "#ef4444");
   };
 
+  const lastSeenText = (ts) => {
+    if (!ts) return null;
+    const diff = Math.floor((Date.now() - new Date(ts)) / 1000);
+    if (diff < 120) return "Gerade aktiv";
+    if (diff < 3600) return `Vor ${Math.floor(diff / 60)} Min. aktiv`;
+    if (diff < 86400) return `Vor ${Math.floor(diff / 3600)} Std. aktiv`;
+    if (diff < 604800) return `Vor ${Math.floor(diff / 86400)} Tag${Math.floor(diff / 86400) > 1 ? "en" : ""} aktiv`;
+    return null;
+  };
+
   // ── PROFILE SAVE ─────────────────────────────────────────
   const saveProfile = async () => {
     const skills = editForm.skills.split(",").map(s => s.trim()).filter(Boolean);
     const { error } = await supabase.from("profiles").update({
       bio: editForm.bio, linkedin_url: editForm.linkedin_url,
-      skills, location: editForm.location, projects: editProjects
+      skills, location: editForm.location, projects: editProjects, is_available: editForm.is_available
     }).eq("id", user.id);
     if (error) { showToast("Fehler beim Speichern", "#ef4444"); return; }
-    setProfile(prev => ({ ...prev, bio: editForm.bio, linkedin_url: editForm.linkedin_url, skills, location: editForm.location, projects: editProjects }));
+    setProfile(prev => ({ ...prev, bio: editForm.bio, linkedin_url: editForm.linkedin_url, skills, location: editForm.location, projects: editProjects, is_available: editForm.is_available }));
     setShowEditProfile(false);
     showToast("Profil gespeichert ✓");
   };
@@ -1264,9 +1278,13 @@ export default function App() {
               <span style={{ fontFamily: "'Orbitron', monospace", fontSize: "1rem", fontWeight: 900 }}>{viewingProfile.display_name}</span>
               {viewingProfile.is_verified && <span style={{ background: "#10b981", color: "#fff", borderRadius: "50%", width: 16, height: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 9 }}>✓</span>}
             </div>
-            <div style={{ fontSize: 13, color: "#4a5a7a", marginBottom: 14 }}>
+            <div style={{ fontSize: 13, color: "#4a5a7a", marginBottom: 6 }}>
               {viewingProfile.account_type === "company" ? "🏢 Unternehmen" : viewingProfile.account_type === "sideprojekt" ? "💼 Side-Projekt" : "👤 Freelancer"}
               {viewingProfile.location && ` · 📍 ${viewingProfile.location}`}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <span style={{ padding: "2px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: viewingProfile.is_available !== false ? "#10b98118" : "#ef444418", color: viewingProfile.is_available !== false ? "#10b981" : "#ef4444", border: `1px solid ${viewingProfile.is_available !== false ? "#10b98133" : "#ef444433"}` }}>{viewingProfile.is_available !== false ? "🟢 Offen für Projekte" : "🔴 Ausgebucht"}</span>
+              {lastSeenText(viewingProfile.last_seen) && <span style={{ fontSize: 12, color: "#4a6a8a" }}>· {lastSeenText(viewingProfile.last_seen)}</span>}
             </div>
 
             <div style={{ display: "flex", background: "#e8f2ff", border: "1px solid #c0d8f0", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
@@ -1675,8 +1693,8 @@ export default function App() {
             <span style={{ fontFamily: "'Orbitron', monospace", fontSize: "1rem", fontWeight: 900 }}>{profile?.display_name || "Nutzer"}</span>
             {profile?.is_verified && <span style={{ background: "#10b981", color: "#fff", borderRadius: "50%", width: 16, height: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 9 }}>✓</span>}
           </div>
-          <div style={{ fontSize: 13, color: "#4a5a7a", marginBottom: 4 }}>{profile?.account_type === "company" ? "🏢 Unternehmen" : profile?.account_type === "sideprojekt" ? "💼 Side-Projekt" : "👤 Freelancer"}</div>
-          {profile?.location && <div style={{ fontSize: 13, color: "#4a5a7a", marginBottom: 10 }}>📍 {profile.location}</div>}
+          <div style={{ fontSize: 13, color: "#4a5a7a", marginBottom: 6 }}>{profile?.account_type === "company" ? "🏢 Unternehmen" : profile?.account_type === "sideprojekt" ? "💼 Side-Projekt" : "👤 Freelancer"}{profile?.location && ` · 📍 ${profile.location}`}</div>
+          <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, marginBottom: 12, background: profile?.is_available !== false ? "#10b98118" : "#ef444418", color: profile?.is_available !== false ? "#10b981" : "#ef4444", border: `1px solid ${profile?.is_available !== false ? "#10b98133" : "#ef444433"}` }}>{profile?.is_available !== false ? "🟢 Offen für Projekte" : "🔴 Ausgebucht"}</span>
 
           {profile?.bio && (
             <div style={{ fontSize: 13, color: "#1a3a5a", lineHeight: 1.7, marginBottom: 14, background: "#e8f2ff", border: "1px solid #c0d8f0", borderRadius: 12, padding: 14 }}>{profile.bio}</div>
@@ -1855,6 +1873,14 @@ export default function App() {
               setEditProjects(prev => [...prev, { name: newProject.name.trim(), url: newProject.url.trim(), desc: newProject.desc.trim() }]);
               setNewProject({ name: "", url: "", desc: "" });
             }} style={{ ...s.btn(), padding: "9px 16px", fontSize: 13, width: "100%", borderRadius: 8 }}>+ Projekt hinzufügen</button>
+          </div>
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label style={s.label}>Verfügbarkeit</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[{ v: true, l: "🟢 Offen für Projekte" }, { v: false, l: "🔴 Ausgebucht" }].map(({ v, l }) => (
+              <button key={l} onClick={() => setEditForm(prev => ({ ...prev, is_available: v }))} style={{ flex: 1, padding: "10px 8px", borderRadius: 10, border: `1px solid ${editForm.is_available === v ? "#2a7fff" : "#c0d8f0"}`, background: editForm.is_available === v ? "#2a7fff18" : "#e8f2ff", color: editForm.is_available === v ? "#2a7fff" : "#4a6a8a", fontFamily: "inherit", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{l}</button>
+            ))}
           </div>
         </div>
         <button onClick={saveProfile} style={{ ...s.btn(), width: "100%", padding: 14, fontSize: 15, borderRadius: 12 }}>Speichern ✓</button>
