@@ -731,6 +731,9 @@ export default function App() {
 
   const sendNotification = async (userId, type, title, body, relatedId) => {
     await supabase.from("notifications").insert({ user_id: userId, type, title, body, related_id: relatedId });
+    try {
+      await supabase.functions.invoke("send-push", { body: { userId, title, body } });
+    } catch (e) {}
   };
 
   // ── RATINGS ───────────────────────────────────────────────
