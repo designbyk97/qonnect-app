@@ -2122,18 +2122,20 @@ export default function App() {
           <p>E-Mail-Adresse, Name, Profilbild, Standort, Skills, Posts und Nachrichten innerhalb der Plattform.</p>
 
           <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>Zweck</p>
-          <p>Betrieb der Plattform startqonnect.com. Daten werden nicht an Dritte verkauft oder für Werbezwecke genutzt.</p>
+          <p>Betrieb der Plattform startqonnect.com sowie Analyse der Websitenutzung zur Verbesserung des Angebots. Daten werden nicht verkauft oder für Werbezwecke an Dritte weitergegeben.</p>
 
           <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>Dienstleister (Auftragsverarbeiter)</p>
           <p>• Supabase Inc. — Datenbank & Authentifizierung (USA, EU-Standardvertragsklauseln)</p>
           <p>• Vercel Inc. — Hosting (USA, EU-Standardvertragsklauseln)</p>
           <p>• Resend Inc. — E-Mail-Versand (USA, EU-Standardvertragsklauseln)</p>
+          <p>• Google LLC — Websiteanalyse via Google Analytics (USA, EU-Standardvertragsklauseln). Google Analytics erfasst anonymisierte Nutzungsdaten (Seitenaufrufe, Gerättyp, Verweildauer). IP-Adressen werden anonymisiert. Weitere Infos: policies.google.com/privacy</p>
+          <p>• OneSignal Inc. — Push-Benachrichtigungen (USA, EU-Standardvertragsklauseln). OneSignal speichert eine anonyme Geräte-ID zur Zustellung von Benachrichtigungen.</p>
 
           <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>Deine Rechte (DSGVO)</p>
-          <p>Du hast das Recht auf Auskunft, Berichtigung, Löschung und Datenübertragbarkeit. Account-Löschung direkt in den Einstellungen der App möglich.</p>
+          <p>Du hast das Recht auf Auskunft, Berichtigung, Löschung und Datenübertragbarkeit. Account-Löschung direkt in den Einstellungen der App möglich. Widerspruch gegen Analyse-Tracking jederzeit per E-Mail an contact@startqonnect.com.</p>
 
-          <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>Cookies</p>
-          <p>Die App verwendet ausschließlich technisch notwendige Cookies zur Authentifizierung. Es werden keine Tracking- oder Werbe-Cookies eingesetzt.</p>
+          <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>Cookies & Tracking</p>
+          <p>Die App verwendet technisch notwendige Cookies zur Authentifizierung sowie Analyse-Cookies von Google Analytics (§ 25 TTDSG). Push-Benachrichtigungen erfordern deine ausdrückliche Zustimmung im Browser.</p>
 
           <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>Kontakt</p>
           <p>contact@startqonnect.com</p>
