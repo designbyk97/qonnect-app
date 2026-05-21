@@ -47,6 +47,7 @@ export default function App() {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showImpressum, setShowImpressum] = useState(false);
   const [showDatenschutz, setShowDatenschutz] = useState(false);
+  const [showAGB, setShowAGB] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [viewingProfile, setViewingProfile] = useState(null);
   const [postType, setPostType] = useState("seek");
@@ -1622,9 +1623,10 @@ export default function App() {
             ))}
           </div>
 
-          <div style={{ display: "flex", gap: 16, marginBottom: 20, paddingTop: 4 }}>
+          <div style={{ display: "flex", gap: 16, marginBottom: 20, paddingTop: 4, flexWrap: "wrap" }}>
             <button onClick={() => setShowImpressum(true)} style={{ background: "none", border: "none", color: "#4a5a7a", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>Impressum</button>
             <button onClick={() => setShowDatenschutz(true)} style={{ background: "none", border: "none", color: "#4a5a7a", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>Datenschutz</button>
+            <button onClick={() => setShowAGB(true)} style={{ background: "none", border: "none", color: "#4a5a7a", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>AGB</button>
           </div>
 
           {/* Profil-Tabs */}
@@ -2045,12 +2047,16 @@ export default function App() {
         <div style={{ width: 32 }}></div>
       </div>
       <div style={{ flex: 1, overflowY: "auto", padding: 24, scrollbarWidth: "none" }}>
-        <div style={{ fontSize: 14, color: "#8090aa", lineHeight: 1.9 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#eaf2ff", marginBottom: 16 }}>Qonnect</div>
-          <p>Plattform für B2B-Networking</p>
-          <p>Web: startqonnect.com</p>
+        <div style={{ fontSize: 14, color: "#1a3a5a", lineHeight: 2 }}>
+          <p style={{ fontWeight: 700, marginBottom: 4 }}>Angaben gemäß § 5 TMG</p>
+          <p>Kevin Esad Lindemann</p>
+          <p>Kalkumerstraße 80</p>
+          <p>40468 Düsseldorf</p>
+          <p style={{ marginTop: 12, fontWeight: 700 }}>Kontakt</p>
           <p>E-Mail: contact@startqonnect.com</p>
-          <p style={{ marginTop: 16, fontSize: 13, color: "#4a5a7a" }}>Für vollständige Impressumsinformationen wende dich bitte per E-Mail an uns.</p>
+          <p style={{ marginTop: 12, fontWeight: 700 }}>Plattform</p>
+          <p>startqonnect.com — B2B-Networking für Freelancer, Side-Projekte und Unternehmen.</p>
+          <p style={{ marginTop: 12, fontSize: 12, color: "#4a5a7a" }}>Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV: Kevin Esad Lindemann, Anschrift wie oben.</p>
         </div>
       </div>
     </div>
@@ -2065,11 +2071,64 @@ export default function App() {
         <div style={{ width: 32 }}></div>
       </div>
       <div style={{ flex: 1, overflowY: "auto", padding: 24, scrollbarWidth: "none" }}>
-        <div style={{ fontSize: 14, color: "#8090aa", lineHeight: 1.9 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#eaf2ff", marginBottom: 16 }}>Datenschutzerklärung</div>
-          <p>Wir verarbeiten deine Daten gemäß DSGVO ausschließlich zur Bereitstellung der Plattform.</p>
-          <p style={{ marginTop: 12 }}>Gespeicherte Daten: E-Mail, Name, Profilbild, Posts und Nachrichten auf der Plattform. Daten werden nicht an Dritte weitergegeben.</p>
-          <p style={{ marginTop: 12 }}>Zum Löschen deines Kontos oder für Auskunftsanfragen: contact@startqonnect.com</p>
+        <div style={{ fontSize: 13, color: "#1a3a5a", lineHeight: 1.9 }}>
+          <p style={{ fontWeight: 700, marginBottom: 4 }}>Verantwortlicher</p>
+          <p>Kevin Esad Lindemann, Kalkumerstraße 80, 40468 Düsseldorf</p>
+          <p>E-Mail: contact@startqonnect.com</p>
+
+          <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>Erhobene Daten</p>
+          <p>E-Mail-Adresse, Name, Profilbild, Standort, Skills, Posts und Nachrichten innerhalb der Plattform.</p>
+
+          <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>Zweck</p>
+          <p>Betrieb der Plattform startqonnect.com. Daten werden nicht an Dritte verkauft oder für Werbezwecke genutzt.</p>
+
+          <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>Dienstleister (Auftragsverarbeiter)</p>
+          <p>• Supabase Inc. — Datenbank & Authentifizierung (USA, EU-Standardvertragsklauseln)</p>
+          <p>• Vercel Inc. — Hosting (USA, EU-Standardvertragsklauseln)</p>
+          <p>• Resend Inc. — E-Mail-Versand (USA, EU-Standardvertragsklauseln)</p>
+
+          <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>Deine Rechte (DSGVO)</p>
+          <p>Du hast das Recht auf Auskunft, Berichtigung, Löschung und Datenübertragbarkeit. Account-Löschung direkt in den Einstellungen der App möglich.</p>
+
+          <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>Cookies</p>
+          <p>Die App verwendet ausschließlich technisch notwendige Cookies zur Authentifizierung. Es werden keine Tracking- oder Werbe-Cookies eingesetzt.</p>
+
+          <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>Kontakt</p>
+          <p>contact@startqonnect.com</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── AGB ───────────────────────────────────────────────────
+  const renderAGB = () => (
+    <div style={s.overlay}>
+      <div style={{ ...s.topBar, position: "sticky", flexShrink: 0 }}>
+        <button onClick={() => setShowAGB(false)} style={{ background: "none", border: "none", color: "#2a7fff", fontSize: 20, cursor: "pointer" }}>←</button>
+        <span style={{ fontSize: 15, fontWeight: 700 }}>Nutzungsbedingungen</span>
+        <div style={{ width: 32 }}></div>
+      </div>
+      <div style={{ flex: 1, overflowY: "auto", padding: 24, scrollbarWidth: "none" }}>
+        <div style={{ fontSize: 13, color: "#1a3a5a", lineHeight: 1.9 }}>
+          <p style={{ fontWeight: 700, marginBottom: 4 }}>1. Geltungsbereich</p>
+          <p>Diese Nutzungsbedingungen gelten für die Nutzung der Plattform startqonnect.com (Betreiber: Kevin Esad Lindemann).</p>
+
+          <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>2. Nutzung</p>
+          <p>Die Plattform richtet sich ausschließlich an Personen ab 18 Jahren für gewerbliche oder berufliche Zwecke. Private Nutzung ist nicht gestattet.</p>
+
+          <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>3. Pflichten der Nutzer</p>
+          <p>Nutzer verpflichten sich, keine falschen Angaben zu machen, keine rechtswidrigen Inhalte zu veröffentlichen und die Rechte anderer Nutzer zu respektieren.</p>
+
+          <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>4. Sperrung</p>
+          <p>Der Betreiber behält sich das Recht vor, Accounts ohne Angabe von Gründen zu sperren, insbesondere bei Verstößen gegen diese Bedingungen.</p>
+
+          <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>5. Haftung</p>
+          <p>Der Betreiber haftet nicht für Inhalte anderer Nutzer oder den Erfolg von über die Plattform angebahnten Geschäften.</p>
+
+          <p style={{ fontWeight: 700, marginTop: 16, marginBottom: 4 }}>6. Änderungen</p>
+          <p>Der Betreiber behält sich vor, diese Bedingungen jederzeit zu ändern. Nutzer werden per E-Mail informiert.</p>
+
+          <p style={{ marginTop: 16, fontSize: 12, color: "#4a5a7a" }}>Stand: Mai 2026 · contact@startqonnect.com</p>
         </div>
       </div>
     </div>
@@ -2094,8 +2153,9 @@ export default function App() {
       {viewingProfile && renderOtherProfile()}
       {showImpressum && renderImpressum()}
       {showDatenschutz && renderDatenschutz()}
+      {showAGB && renderAGB()}
 
-      {!showOfferForm && !showOfferDetail && !showPostForm && !showNotifications && !showAI && !showEditProfile && !selectedPost && !viewingProfile && !showImpressum && !showDatenschutz && (
+      {!showOfferForm && !showOfferDetail && !showPostForm && !showNotifications && !showAI && !showEditProfile && !selectedPost && !viewingProfile && !showImpressum && !showDatenschutz && !showAGB && (
         <>
           <div style={s.topBar}>
             <div style={{ ...s.logo, cursor: "pointer" }} onClick={() => { setActiveTab("home"); setHomeTab("feed"); setSelectedPost(null); setViewingProfile(null); setSearchQuery(""); }}><span style={{ color: "#2a7fff" }}>q</span>onnect</div>
@@ -2117,7 +2177,7 @@ export default function App() {
         </>
       )}
 
-      {!showOfferForm && !showOfferDetail && !showNotifications && !showAI && !showEditProfile && !selectedPost && !viewingProfile && !showImpressum && !showDatenschutz && (
+      {!showOfferForm && !showOfferDetail && !showNotifications && !showAI && !showEditProfile && !selectedPost && !viewingProfile && !showImpressum && !showDatenschutz && !showAGB && (
         <>
           {/* MOBIL – Instagram-Style Bottom Nav */}
           {isMobile && (
