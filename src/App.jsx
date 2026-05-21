@@ -316,7 +316,9 @@ export default function App() {
     if (!user) return;
     const matchIds = await supabase.from("matches").select("id").or(`seeker_id.eq.${user.id},provider_id.eq.${user.id}`);
     if (!matchIds.data?.length) return;
-    const ids = matchIds.data.map(m => m.id);
+    const deletedChats = JSON.parse(localStorage.getItem(`deleted_chats_${user.id}`) || "[]");
+    const ids = matchIds.data.map(m => m.id).filter(id => !deletedChats.includes(id));
+    if (!ids.length) { setUnreadCount(0); return; }
     const { count } = await supabase.from("messages").select("*", { count: "exact", head: true })
       .in("match_id", ids).eq("is_read", false).neq("sender_id", user.id);
     setUnreadCount(count || 0);
