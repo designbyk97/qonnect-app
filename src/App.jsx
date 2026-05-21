@@ -199,7 +199,8 @@ export default function App() {
       .order("created_at", { ascending: false }).limit(50);
     if (activeCategory !== "Alle") query = query.contains("tags", [activeCategory]);
     const { data, error } = await query;
-    if (error) { console.error("fetchPosts:", error.message); setPosts([]); return; }
+    if (error) { showToast("Feed-Fehler: " + error.message, "#ef4444"); setPosts([]); return; }
+    showToast(`Posts geladen: ${data?.length ?? "null"} (tab: ${feedTab})`, "#2a7fff");
     if (data && data.length > 0) {
       setPosts(data.filter(p => !p.status || p.status === "active").map(p => ({
         ...p,
