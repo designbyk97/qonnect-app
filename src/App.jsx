@@ -190,6 +190,8 @@ export default function App() {
         (payload) => {
           const msg = payload.new;
           if (msg.sender_id !== user.id) {
+            const deletedChats = JSON.parse(localStorage.getItem(`deleted_chats_${user.id}`) || "[]");
+            if (deletedChats.includes(msg.match_id)) return;
             if (!activeChatRef.current || activeChatRef.current.id !== msg.match_id) {
               setUnreadCount(prev => prev + 1);
             }
@@ -2085,11 +2087,15 @@ export default function App() {
                 <div style={{ fontSize: 48, marginBottom: 12 }}>🔔</div>
                 <div style={{ fontSize: 14, fontWeight: 600 }}>Keine Benachrichtigungen</div>
               </div>
-            : realNotifications.map(n => (
+            : realNotifications.map(n => {
+              const deletedChats = JSON.parse(localStorage.getItem(`deleted_chats_${user?.id}`) || "[]");
+              const isDeletedChat = n.type === "message" && n.related_id && deletedChats.includes(n.related_id);
+              return (
               <div key={n.id} style={{ padding: "14px 16px", borderBottom: "1px solid #c0d8f0", background: n.is_read ? "none" : "#2a7fff08", display: "flex", gap: 12, alignItems: "flex-start" }}>
                 <span style={{ fontSize: 24, flexShrink: 0 }}>{icons[n.type] || "🔔"}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: n.is_read ? 500 : 700, color: "#0f1f3d", marginBottom: 2 }}>{n.title}</div>
+                  {isDeletedChat && <div style={{ fontSize: 11, color: "#8090aa", marginBottom: 3, fontStyle: "italic" }}>Gelöschter Chat</div>}
                   {n.body && <div style={{ fontSize: 12, color: "#4a6a8a", marginBottom: 3 }}>{n.body}</div>}
                   <div style={{ fontSize: 11, color: "#8090aa" }}>{timeAgo(n.created_at)}</div>
                 </div>
@@ -2098,7 +2104,7 @@ export default function App() {
                   <button onClick={() => deleteNotification(n.id)} style={{ background: "none", border: "none", color: "#8090aa", fontSize: 16, cursor: "pointer", padding: 0, lineHeight: 1 }}>✕</button>
                 </div>
               </div>
-            ))
+            );})
           }
         </div>
       </div>
