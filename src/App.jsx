@@ -284,11 +284,8 @@ export default function App() {
       .or(`seeker_id.eq.${user.id},provider_id.eq.${user.id}`)
       .order("created_at", { ascending: false });
     if (!data) return;
-    const visible = data.filter(c => {
-      if (c.seeker_id === user.id && c.deleted_by_seeker) return false;
-      if (c.provider_id === user.id && c.deleted_by_provider) return false;
-      return true;
-    });
+    const deleted = JSON.parse(localStorage.getItem(`deleted_chats_${user.id}`) || "[]");
+    const visible = data.filter(c => !deleted.includes(c.id));
 
     const chatsWithMessages = await Promise.all(visible.map(async (chat) => {
       const { data: msgs } = await supabase.from("messages")
@@ -468,18 +465,8 @@ export default function App() {
   };
 
   const deleteChat = async (chatId) => {
-    const chat = chats.find(c => c.id === chatId);
-    if (!chat) return;
-    const isSeeker = chat.seeker_id === user.id;
-    const field = isSeeker ? "deleted_by_seeker" : "deleted_by_provider";
-    const otherDeleted = isSeeker ? chat.deleted_by_provider : chat.deleted_by_seeker;
-    if (otherDeleted) {
-      await supabase.from("messages").delete().eq("match_id", chatId);
-      await supabase.from("offers").update({ match_id: null }).eq("match_id", chatId);
-      await supabase.from("matches").delete().eq("id", chatId);
-    } else {
-      await supabase.from("matches").update({ [field]: true }).eq("id", chatId);
-    }
+    const deleted = JSON.parse(localStorage.getItem(`deleted_chats_${user.id}`) || "[]");
+    localStorage.setItem(`deleted_chats_${user.id}`, JSON.stringify([...deleted, chatId]));
     setChats(prev => prev.filter(c => c.id !== chatId));
     setDeletingChatId(null);
     if (activeChat?.id === chatId) { setActiveChat(null); setChatMessages([]); }
