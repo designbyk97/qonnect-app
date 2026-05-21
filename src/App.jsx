@@ -455,8 +455,11 @@ export default function App() {
     }
     await supabase.auth.signOut();
     setLoading(false);
+    setUser(null);
+    setProfile(null);
     setScreen("auth");
     setAwaitingEmailConfirm(authForm.email);
+    showToast("E-Mail verschickt — bitte bestätigen ✓", "#10b981");
   };
 
   const handleForgotPassword = async () => {
