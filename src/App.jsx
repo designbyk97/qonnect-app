@@ -195,12 +195,13 @@ export default function App() {
   const fetchPosts = async () => {
     let query = supabase.from("posts")
       .select("*, profiles(id, display_name, trust_score, is_verified, account_type, avatar_url)")
-      .eq("type", feedTab).eq("status", "active")
+      .eq("type", feedTab)
       .order("created_at", { ascending: false }).limit(50);
     if (activeCategory !== "Alle") query = query.contains("tags", [activeCategory]);
-    const { data } = await query;
+    const { data, error } = await query;
+    if (error) { console.error("fetchPosts:", error.message); setPosts([]); return; }
     if (data && data.length > 0) {
-      setPosts(data.map(p => ({
+      setPosts(data.filter(p => !p.status || p.status === "active").map(p => ({
         ...p,
         author: {
           id: p.profiles?.id,
