@@ -284,8 +284,13 @@ export default function App() {
       .or(`seeker_id.eq.${user.id},provider_id.eq.${user.id}`)
       .order("created_at", { ascending: false });
     if (!data) return;
+    const visible = data.filter(c => {
+      if (c.seeker_id === user.id && c.deleted_by_seeker) return false;
+      if (c.provider_id === user.id && c.deleted_by_provider) return false;
+      return true;
+    });
 
-    const chatsWithMessages = await Promise.all(data.map(async (chat) => {
+    const chatsWithMessages = await Promise.all(visible.map(async (chat) => {
       const { data: msgs } = await supabase.from("messages")
         .select("content, created_at, sender_id, is_read")
         .eq("match_id", chat.id)
@@ -463,10 +468,18 @@ export default function App() {
   };
 
   const deleteChat = async (chatId) => {
-    await supabase.from("messages").delete().eq("match_id", chatId);
-    await supabase.from("offers").update({ match_id: null }).eq("match_id", chatId);
-    const { error } = await supabase.from("matches").delete().eq("id", chatId);
-    if (error) { showToast("Fehler beim Löschen", "#ef4444"); return; }
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
+    const isSeeker = chat.seeker_id === user.id;
+    const field = isSeeker ? "deleted_by_seeker" : "deleted_by_provider";
+    const otherDeleted = isSeeker ? chat.deleted_by_provider : chat.deleted_by_seeker;
+    if (otherDeleted) {
+      await supabase.from("messages").delete().eq("match_id", chatId);
+      await supabase.from("offers").update({ match_id: null }).eq("match_id", chatId);
+      await supabase.from("matches").delete().eq("id", chatId);
+    } else {
+      await supabase.from("matches").update({ [field]: true }).eq("id", chatId);
+    }
     setChats(prev => prev.filter(c => c.id !== chatId));
     setDeletingChatId(null);
     if (activeChat?.id === chatId) { setActiveChat(null); setChatMessages([]); }
