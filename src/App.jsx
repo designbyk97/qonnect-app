@@ -34,6 +34,7 @@ export default function App() {
   const [onboardingForm, setOnboardingForm] = useState({ name: "", type: "freelancer" });
   const [registeredWithEmail, setRegisteredWithEmail] = useState(false);
   const [cookieConsent, setCookieConsent] = useState(() => localStorage.getItem("cookie_consent"));
+  const [showPushPrompt, setShowPushPrompt] = useState(false);
   const [awaitingEmailConfirm, setAwaitingEmailConfirm] = useState(null);
   const [authMode, setAuthMode] = useState("login");
   const [showForgotPw, setShowForgotPw] = useState(false);
@@ -139,7 +140,11 @@ export default function App() {
     if (!user || screen !== "app") return;
     fetchOffers();
     fetchChats();
-    setTimeout(() => requestPushPermission(), 3000);
+    setTimeout(() => {
+      if (Notification.permission === "default" && !localStorage.getItem("push_prompt_shown")) {
+        setShowPushPrompt(true);
+      }
+    }, 2000);
     const interval = setInterval(() => { fetchOffers(); fetchUnreadCount(); }, 20000);
     return () => clearInterval(interval);
   }, [user, screen]);
@@ -2338,6 +2343,15 @@ export default function App() {
       )}
 
 {toast && <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: toast.color, color: "#fff", padding: "10px 20px", borderRadius: 100, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", zIndex: 300, boxShadow: "0 4px 20px #0008" }}>{toast.msg}</div>}
+
+      {showPushPrompt && (
+        <div style={{ position: "fixed", bottom: cookieConsent ? 0 : 120, left: 0, right: 0, zIndex: 410, background: "#0f1f3d", borderTop: "1px solid #2a7fff44", padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, maxWidth: 640, margin: "0 auto" }}>
+          <span style={{ fontSize: 22 }}>🔔</span>
+          <div style={{ flex: 1, fontSize: 13, color: "#c8dcf8" }}>Benachrichtigungen aktivieren um Angebote & Nachrichten sofort zu erhalten</div>
+          <button onClick={async () => { localStorage.setItem("push_prompt_shown", "1"); setShowPushPrompt(false); await requestPushPermission(); }} style={{ padding: "8px 14px", background: "#2a7fff", color: "#fff", border: "none", borderRadius: 10, fontFamily: "inherit", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>Aktivieren</button>
+          <button onClick={() => { localStorage.setItem("push_prompt_shown", "1"); setShowPushPrompt(false); }} style={{ background: "none", border: "none", color: "#8090aa", fontSize: 20, cursor: "pointer", padding: "0 4px" }}>✕</button>
+        </div>
+      )}
 
       {!cookieConsent && (
         <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 400, background: "#0f1f3d", borderTop: "1px solid #2a7fff44", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12, maxWidth: 640, margin: "0 auto" }}>
