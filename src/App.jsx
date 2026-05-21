@@ -464,7 +464,9 @@ export default function App() {
 
   const deleteChat = async (chatId) => {
     await supabase.from("messages").delete().eq("match_id", chatId);
-    await supabase.from("matches").delete().eq("id", chatId);
+    await supabase.from("offers").update({ match_id: null }).eq("match_id", chatId);
+    const { error } = await supabase.from("matches").delete().eq("id", chatId);
+    if (error) { showToast("Fehler beim Löschen", "#ef4444"); return; }
     setChats(prev => prev.filter(c => c.id !== chatId));
     setDeletingChatId(null);
     if (activeChat?.id === chatId) { setActiveChat(null); setChatMessages([]); }
