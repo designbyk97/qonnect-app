@@ -139,6 +139,7 @@ export default function App() {
     if (!user || screen !== "app") return;
     fetchOffers();
     fetchChats();
+    setTimeout(() => requestPushPermission(), 3000);
     const interval = setInterval(() => { fetchOffers(); fetchUnreadCount(); }, 20000);
     return () => clearInterval(interval);
   }, [user, screen]);
