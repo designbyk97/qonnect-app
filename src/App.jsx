@@ -406,10 +406,13 @@ export default function App() {
       .eq("status", "active").single();
 
     if (existingMatch) {
-      setActiveTab("chat");
-      const { data: match } = await supabase.from("matches").select("*, seeker:profiles!matches_seeker_id_fkey(display_name), provider:profiles!matches_provider_id_fkey(display_name)").eq("id", existingMatch.id).single();
-      if (match) { setActiveChat(match); fetchMessages(match.id); }
-      return;
+      const deletedChats = JSON.parse(localStorage.getItem(`deleted_chats_${user.id}`) || "[]");
+      if (!deletedChats.includes(existingMatch.id)) {
+        setActiveTab("chat");
+        const { data: match } = await supabase.from("matches").select("*, seeker:profiles!matches_seeker_id_fkey(display_name), provider:profiles!matches_provider_id_fkey(display_name)").eq("id", existingMatch.id).single();
+        if (match) { setActiveChat(match); fetchMessages(match.id); }
+        return;
+      }
     }
 
     const { data: existingOffer } = await supabase.from("offers")
