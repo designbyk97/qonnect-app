@@ -363,7 +363,7 @@ export default function App() {
 
   const fetchOwnPosts = async () => {
     if (!user) return;
-    const { data } = await supabase.from("posts").select("*").eq("author_id", user.id).neq("status", "deleted").order("created_at", { ascending: false });
+    const { data } = await supabase.from("posts").select("*").eq("author_id", user.id).eq("status", "active").order("created_at", { ascending: false });
     if (data) setOwnPosts(data);
   };
 
@@ -670,7 +670,8 @@ export default function App() {
   };
 
   const deletePost = async (postId) => {
-    await supabase.from("posts").update({ status: "deleted" }).eq("id", postId).eq("author_id", user.id);
+    const { error } = await supabase.from("posts").update({ status: "inactive" }).eq("id", postId);
+    if (error) { showToast("Fehler beim Löschen: " + error.message, "#ef4444"); return; }
     setPosts(prev => prev.filter(p => p.id !== postId));
     setOwnPosts(prev => prev.filter(p => p.id !== postId));
     showToast("Post gelöscht ✓");
