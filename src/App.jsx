@@ -2135,7 +2135,7 @@ export default function App() {
         <span style={{ fontSize: 15, fontWeight: 700 }}>Post erstellen</span>
         <div style={{ width: 32 }}></div>
       </div>
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px", scrollbarWidth: "none" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "16px", paddingBottom: 88, scrollbarWidth: "none" }}>
         <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
           {[{ k: "seek", l: "🔍 Ich suche" }, { k: "offer", l: "💡 Ich biete" }].map(({ k, l }) => (
             <button key={k} onClick={() => setPostType(k)} style={{ flex: 1, padding: "12px 8px", borderRadius: 11, border: `2px solid ${postType === k ? "#2a7fff" : "#c0d8f0"}`, background: postType === k ? "#2a7fff" : "#e8f2ff", color: postType === k ? "#fff" : "#1a3a5a", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>{l}</button>
