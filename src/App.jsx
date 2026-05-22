@@ -670,7 +670,7 @@ export default function App() {
   };
 
   const deletePost = async (postId) => {
-    await supabase.from("posts").delete().eq("id", postId).eq("author_id", user.id);
+    await supabase.from("posts").update({ status: "deleted" }).eq("id", postId).eq("author_id", user.id);
     setPosts(prev => prev.filter(p => p.id !== postId));
     setOwnPosts(prev => prev.filter(p => p.id !== postId));
     showToast("Post gelöscht ✓");
