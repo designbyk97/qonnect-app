@@ -948,6 +948,9 @@ export default function App() {
           message_type: "payment_released",
         }).select().single();
         if (relMsg) setChatMessages(prev => [...prev, { ...relMsg, me: true }]);
+        setRatingScore(0);
+        setRatingComment("");
+        setShowRatingForm({ matchId: activeChat.id, ratedId: activeChat.provider_id, name: getChatPartner(activeChat) });
       }
     } catch (e) { showToast("Fehler", "#ef4444"); }
     setLoading(false);
