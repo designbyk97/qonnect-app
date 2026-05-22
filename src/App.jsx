@@ -363,7 +363,7 @@ export default function App() {
 
   const fetchOwnPosts = async () => {
     if (!user) return;
-    const { data } = await supabase.from("posts").select("*").eq("author_id", user.id).order("created_at", { ascending: false });
+    const { data } = await supabase.from("posts").select("*").eq("author_id", user.id).neq("status", "deleted").order("created_at", { ascending: false });
     if (data) setOwnPosts(data);
   };
 
