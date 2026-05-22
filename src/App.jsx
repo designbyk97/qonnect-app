@@ -245,6 +245,15 @@ export default function App() {
       window.history.replaceState({}, "", window.location.pathname);
       showToast("Zahlung abgebrochen", "#f59e0b");
     }
+    const stripeConnect = params.get("stripe_connect");
+    if (stripeConnect === "success") {
+      window.history.replaceState({}, "", window.location.pathname);
+      await fetchProfile(user.id);
+      showToast("Bankkonto erfolgreich verbunden! ✓");
+    } else if (stripeConnect === "refresh") {
+      window.history.replaceState({}, "", window.location.pathname);
+      showToast("Bitte Bankkonto-Verbindung erneut versuchen", "#f59e0b");
+    }
   }, [screen, user]);
 
   const fetchProfile = async (userId) => {
@@ -927,6 +936,18 @@ export default function App() {
       setChatMessages(prev => [...prev, { ...data, me: true }]);
       sendNotification(recipientId, "message", "Betrag abgelehnt", "Der Seeker hat den Betrag abgelehnt. Bitte neuen Betrag vorschlagen.", activeChat.id);
     }
+  };
+
+  const handleConnectStripe = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("connect-provider", {
+        body: { userId: user.id, email: user.email },
+      });
+      if (error || !data?.url) { showToast("Fehler beim Verbinden", "#ef4444"); }
+      else { window.location.href = data.url; }
+    } catch (e) { showToast("Fehler", "#ef4444"); }
+    setLoading(false);
   };
 
   const handleReleasePayment = async () => {
@@ -2286,6 +2307,15 @@ export default function App() {
           </div>
 
           <div style={{ borderTop: "1px solid #c0d8f0", paddingTop: 20, marginBottom: 16 }}>
+            {profile?.stripe_account_id ? (
+              <div style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #10b98144", background: "#10b98112", color: "#10b981", fontSize: 14, fontWeight: 600, marginBottom: 10, textAlign: "center" }}>
+                ✓ Bankkonto verbunden – Auszahlungen aktiv
+              </div>
+            ) : (
+              <button onClick={handleConnectStripe} disabled={loading} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #10b98144", background: "#10b98112", color: "#10b981", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 10 }}>
+                💳 Bankkonto verbinden – Auszahlungen empfangen
+              </button>
+            )}
             <button onClick={() => { navigator.clipboard?.writeText("contact@startqonnect.com"); showToast("E-Mail kopiert: contact@startqonnect.com ✓"); }} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #2a7fff44", background: "#2a7fff12", color: "#2a7fff", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 10 }}>💬 Support — contact@startqonnect.com</button>
             <button onClick={handleLogout} style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #c0d8f0", background: "#ccdff5", color: "#1a3a5a", fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 10 }}>Abmelden</button>
             {!confirmDelete ? (
