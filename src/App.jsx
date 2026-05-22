@@ -2297,7 +2297,7 @@ export default function App() {
     if (!showSettings) return null;
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={e => { if (e.target === e.currentTarget) setShowSettings(false); }}>
-        <div style={{ background: "#e8f2ff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 640, padding: 24, paddingBottom: 36 }}>
+        <div style={{ background: "#e8f2ff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 640, padding: 24, paddingBottom: 36, maxHeight: "85vh", overflowY: "auto" }}>
           <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 20, color: "#0f1f3d" }}>⚙️ Einstellungen</div>
 
           <div style={{ marginBottom: 20 }}>
