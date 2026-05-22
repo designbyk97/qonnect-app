@@ -913,6 +913,22 @@ export default function App() {
     setLoading(false);
   };
 
+  const handleRejectPaymentRequest = async (msg) => {
+    const recipientId = activeChat.provider_id;
+    const { data } = await supabase.from("messages").insert({
+      match_id: activeChat.id,
+      sender_id: user.id,
+      content: "Zahlungsanforderung abgelehnt – bitte anderen Betrag vorschlagen.",
+      is_read: false,
+      message_type: "payment_rejected",
+      offer_amount: msg.offer_amount,
+    }).select().single();
+    if (data) {
+      setChatMessages(prev => [...prev, { ...data, me: true }]);
+      sendNotification(recipientId, "message", "Betrag abgelehnt", "Der Seeker hat den Betrag abgelehnt. Bitte neuen Betrag vorschlagen.", activeChat.id);
+    }
+  };
+
   const handleReleasePayment = async () => {
     if (!chatPayment) return;
     setLoading(true);
@@ -921,7 +937,18 @@ export default function App() {
         body: { paymentId: chatPayment.id, seekerId: user.id },
       });
       if (error) { showToast("Fehler", "#ef4444"); }
-      else { showToast("Zahlung freigegeben! ✓"); setChatPayment(prev => ({ ...prev, status: "released" })); }
+      else {
+        showToast("Zahlung freigegeben! ✓");
+        setChatPayment(prev => ({ ...prev, status: "released" }));
+        const { data: relMsg } = await supabase.from("messages").insert({
+          match_id: activeChat.id,
+          sender_id: user.id,
+          content: "Zahlung freigegeben ✓ – Auftrag abgeschlossen!",
+          is_read: false,
+          message_type: "payment_released",
+        }).select().single();
+        if (relMsg) setChatMessages(prev => [...prev, { ...relMsg, me: true }]);
+      }
     } catch (e) { showToast("Fehler", "#ef4444"); }
     setLoading(false);
   };
@@ -1651,17 +1678,30 @@ export default function App() {
                       <div style={{ fontSize: 10, fontWeight: 700, color: "#10b981", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.12em" }}>Zahlungsanforderung</div>
                       <div style={{ fontSize: 22, fontWeight: 800, color: "#0f1f3d", marginBottom: 10 }}>€{((msg.offer_amount || 0) / 100).toFixed(2)}</div>
                       {!msg.me && user?.id === activeChat?.seeker_id && !chatPayment && (
-                        <button onClick={() => handlePayNow(msg)} disabled={loading} style={{ ...s.btn("#10b981"), padding: "9px 16px", fontSize: 13, width: "100%", borderRadius: 10 }}>Jetzt bezahlen →</button>
+                        <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
+                          <button onClick={() => handlePayNow(msg)} disabled={loading} style={{ ...s.btn("#10b981"), padding: "9px 16px", fontSize: 13, width: "100%", borderRadius: 10 }}>Jetzt bezahlen →</button>
+                          <button onClick={() => handleRejectPaymentRequest(msg)} style={{ ...s.btn("#ef4444"), padding: "8px 16px", fontSize: 13, width: "100%", borderRadius: 10 }}>Betrag ablehnen</button>
+                        </div>
                       )}
                       {chatPayment?.status === "paid" && <div style={{ fontSize: 12, fontWeight: 700, color: "#10b981" }}>✓ Bezahlt – Warte auf Freigabe</div>}
                       {chatPayment?.status === "released" && <div style={{ fontSize: 12, fontWeight: 700, color: "#10b981" }}>✓ Abgeschlossen</div>}
+                    </div>
+                  ) : msg.message_type === "payment_rejected" ? (
+                    <div style={{ background: "#ef444410", border: "1px solid #ef444430", borderRadius: 14, padding: "12px 16px", maxWidth: 260, textAlign: "center" }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#ef4444", marginBottom: 4 }}>Betrag abgelehnt</div>
+                      <div style={{ fontSize: 12, color: "#4a5a7a" }}>€{((msg.offer_amount || 0) / 100).toFixed(2)} – bitte neuen Betrag vorschlagen</div>
+                    </div>
+                  ) : msg.message_type === "payment_released" ? (
+                    <div style={{ background: "#10b98112", border: "1px solid #10b98133", borderRadius: 14, padding: "12px 16px", maxWidth: 260, textAlign: "center" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#10b981" }}>✓ Zahlung freigegeben</div>
+                      <div style={{ fontSize: 12, color: "#4a5a7a", marginTop: 4 }}>Auftrag erfolgreich abgeschlossen!</div>
                     </div>
                   ) : (
                     <div style={{ maxWidth: "70%", padding: "10px 14px", borderRadius: 14, fontSize: 13, lineHeight: 1.5, background: msg.me ? "#2a7fff" : "#fff", border: `1px solid ${msg.me ? "#2a7fff" : "#c0d8f0"}`, color: msg.me ? "#fff" : "#0f1f3d", borderBottomRightRadius: msg.me ? 4 : 14, borderBottomLeftRadius: msg.me ? 14 : 4 }}>
                       {msg.content}
                     </div>
                   )}
-                  {msg.me && msg.message_type !== "payment_request" && (
+                  {msg.me && !["payment_request","payment_rejected","payment_released"].includes(msg.message_type) && (
                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 2, paddingRight: 2 }}>
                       {msg.is_read
                         ? <span style={{ fontSize: 11, color: "#2a7fff", fontWeight: 700 }}>✓✓</span>
