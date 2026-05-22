@@ -108,6 +108,9 @@ export default function App() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [receivedRatings, setReceivedRatings] = useState([]);
+  const [chatPayment, setChatPayment] = useState(null);
+  const [offerAmountInput, setOfferAmountInput] = useState("");
+  const [showPaymentRequest, setShowPaymentRequest] = useState(false);
   const messagesEndRef = useRef(null);
   const realtimeRef = useRef(null);
   const avatarInputRef = useRef(null);
@@ -222,6 +225,28 @@ export default function App() {
   useEffect(() => { if (screen === "app" && user) fetchNotifications(); }, [screen, user]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
+  useEffect(() => {
+    if (screen !== "app" || !user) return;
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    const matchId = params.get("match");
+    const payment = params.get("payment");
+    if (payment === "success" && sessionId && matchId) {
+      window.history.replaceState({}, "", window.location.pathname);
+      supabase.functions.invoke("verify-payment", { body: { sessionId, matchId } }).then(({ data }) => {
+        if (data?.success) {
+          showToast("Zahlung erfolgreich! ✓");
+          supabase.from("matches").select("*, seeker:profiles!matches_seeker_id_fkey(display_name), provider:profiles!matches_provider_id_fkey(display_name)").eq("id", matchId).single().then(({ data: match }) => {
+            if (match) { setActiveTab("chat"); setActiveChat(match); fetchMessages(match.id); }
+          });
+        }
+      });
+    } else if (payment === "cancelled") {
+      window.history.replaceState({}, "", window.location.pathname);
+      showToast("Zahlung abgebrochen", "#f59e0b");
+    }
+  }, [screen, user]);
+
   const fetchProfile = async (userId) => {
     const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
     if (data?.is_banned) {
@@ -333,7 +358,13 @@ export default function App() {
     if (data) setOwnPosts(data);
   };
 
+  const fetchChatPayment = async (matchId) => {
+    const { data } = await supabase.from("payments").select("*").eq("match_id", matchId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    setChatPayment(data || null);
+  };
+
   const fetchMessages = async (matchId) => {
+    fetchChatPayment(matchId);
     const { data } = await supabase.from("messages").select("*")
       .eq("match_id", matchId).order("created_at", { ascending: true });
     if (data) {
@@ -844,6 +875,52 @@ export default function App() {
     setProfile(prev => ({ ...prev, cover_url: url }));
     showToast("Titelbild gespeichert ✓");
     setUploadingCover(false);
+  };
+
+  const sendPaymentRequest = async () => {
+    const amount = parseFloat(offerAmountInput);
+    if (!amount || amount < 1) { showToast("Betrag: mindestens €1", "#ef4444"); return; }
+    setShowPaymentRequest(false);
+    setOfferAmountInput("");
+    const recipientId = activeChat.seeker_id === user.id ? activeChat.provider_id : activeChat.seeker_id;
+    const { data } = await supabase.from("messages").insert({
+      match_id: activeChat.id,
+      sender_id: user.id,
+      content: `Zahlungsanforderung: €${amount.toFixed(2)}`,
+      is_read: false,
+      message_type: "payment_request",
+      offer_amount: Math.round(amount * 100),
+    }).select().single();
+    if (data) {
+      setChatMessages(prev => [...prev, { ...data, me: true }]);
+      sendNotification(recipientId, "message", "Zahlungsanforderung", `€${amount.toFixed(2)} – Klicke zum Bezahlen`, activeChat.id);
+    }
+  };
+
+  const handlePayNow = async (msg) => {
+    if (!activeChat || !user) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { matchId: activeChat.id, seekerId: activeChat.seeker_id, providerId: activeChat.provider_id, amount: msg.offer_amount / 100 },
+      });
+      if (error || !data?.url) { showToast("Fehler beim Erstellen der Zahlung", "#ef4444"); }
+      else { window.location.href = data.url; }
+    } catch (e) { showToast("Fehler", "#ef4444"); }
+    setLoading(false);
+  };
+
+  const handleReleasePayment = async () => {
+    if (!chatPayment) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("release-payment", {
+        body: { paymentId: chatPayment.id, seekerId: user.id },
+      });
+      if (error) { showToast("Fehler", "#ef4444"); }
+      else { showToast("Zahlung freigegeben! ✓"); setChatPayment(prev => ({ ...prev, status: "released" })); }
+    } catch (e) { showToast("Fehler", "#ef4444"); }
+    setLoading(false);
   };
 
   // ── CHAT ─────────────────────────────────────────────────
@@ -1535,7 +1612,7 @@ export default function App() {
       {activeChat ? (
         <>
           <div style={s.topBar}>
-            <button onClick={() => { setActiveChat(null); setChatMessages([]); setDeletingChatId(null); }} style={{ background: "none", border: "none", color: "#2a7fff", fontSize: 20, cursor: "pointer" }}>←</button>
+            <button onClick={() => { setActiveChat(null); setChatMessages([]); setDeletingChatId(null); setChatPayment(null); setShowPaymentRequest(false); }} style={{ background: "none", border: "none", color: "#2a7fff", fontSize: 20, cursor: "pointer" }}>←</button>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <Avatar initials={getChatPartner(activeChat)} size={32} />
               <div>
@@ -1555,7 +1632,7 @@ export default function App() {
               </div>
             )}
           </div>
-          <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 140px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 200px", display: "flex", flexDirection: "column", gap: 10 }}>
             {chatMessages.length === 0 && (
               <div style={{ textAlign: "center", color: "#4a5a7a", fontSize: 13, marginTop: 40 }}>
                 <div style={{ fontSize: 32, marginBottom: 10 }}>🤝</div>
@@ -1566,10 +1643,22 @@ export default function App() {
             {chatMessages.map((msg, i) => (
               <div key={i} style={{ display: "flex", justifyContent: msg.me ? "flex-end" : "flex-start" }}>
                 <div>
-                  <div style={{ maxWidth: "70%", padding: "10px 14px", borderRadius: 14, fontSize: 13, lineHeight: 1.5, background: msg.me ? "#2a7fff" : "#fff", border: `1px solid ${msg.me ? "#2a7fff" : "#c0d8f0"}`, color: msg.me ? "#fff" : "#0f1f3d", borderBottomRightRadius: msg.me ? 4 : 14, borderBottomLeftRadius: msg.me ? 14 : 4 }}>
-                    {msg.content}
-                  </div>
-                  {msg.me && (
+                  {msg.message_type === "payment_request" ? (
+                    <div style={{ background: "#f0fdf8", border: "1px solid #10b98133", borderRadius: 14, padding: "14px 16px", minWidth: 200, maxWidth: 260 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#10b981", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.12em" }}>Zahlungsanforderung</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: "#0f1f3d", marginBottom: 10 }}>€{((msg.offer_amount || 0) / 100).toFixed(2)}</div>
+                      {!msg.me && user?.id === activeChat?.seeker_id && !chatPayment && (
+                        <button onClick={() => handlePayNow(msg)} disabled={loading} style={{ ...s.btn("#10b981"), padding: "9px 16px", fontSize: 13, width: "100%", borderRadius: 10 }}>Jetzt bezahlen →</button>
+                      )}
+                      {chatPayment?.status === "paid" && <div style={{ fontSize: 12, fontWeight: 700, color: "#10b981" }}>✓ Bezahlt – Warte auf Freigabe</div>}
+                      {chatPayment?.status === "released" && <div style={{ fontSize: 12, fontWeight: 700, color: "#10b981" }}>✓ Abgeschlossen</div>}
+                    </div>
+                  ) : (
+                    <div style={{ maxWidth: "70%", padding: "10px 14px", borderRadius: 14, fontSize: 13, lineHeight: 1.5, background: msg.me ? "#2a7fff" : "#fff", border: `1px solid ${msg.me ? "#2a7fff" : "#c0d8f0"}`, color: msg.me ? "#fff" : "#0f1f3d", borderBottomRightRadius: msg.me ? 4 : 14, borderBottomLeftRadius: msg.me ? 14 : 4 }}>
+                      {msg.content}
+                    </div>
+                  )}
+                  {msg.me && msg.message_type !== "payment_request" && (
                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 2, paddingRight: 2 }}>
                       {msg.is_read
                         ? <span style={{ fontSize: 11, color: "#2a7fff", fontWeight: 700 }}>✓✓</span>
@@ -1582,9 +1671,29 @@ export default function App() {
             ))}
             <div ref={messagesEndRef} />
           </div>
-          <div style={{ position: "fixed", bottom: 64, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 640, padding: "10px 16px", display: "flex", gap: 10, background: "rgba(7,9,15,0.97)", borderTop: "1px solid #1a2540", boxSizing: "border-box", alignItems: "center" }}>
-            <input style={{ ...s.input, flex: 1, fontSize: 16, minHeight: 44 }} placeholder="Nachricht..." value={msgInput} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendMessage()} />
-            <button onClick={sendMessage} style={{ ...s.btn(), padding: "0", width: 44, height: 44, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>→</button>
+          <div style={{ position: "fixed", bottom: 64, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 640, background: "rgba(230,243,255,0.97)", borderTop: "1px solid #c0d8f0", boxSizing: "border-box" }}>
+            {chatPayment?.status === "paid" && user?.id === activeChat?.seeker_id && (
+              <div style={{ padding: "10px 16px", borderBottom: "1px solid #10b98122" }}>
+                <button onClick={handleReleasePayment} disabled={loading} style={{ ...s.btn("#10b981"), width: "100%", padding: 12, fontSize: 14 }}>
+                  Problem gelöst – Zahlung freigeben ✓
+                </button>
+              </div>
+            )}
+            {showPaymentRequest && user?.id === activeChat?.provider_id && (
+              <div style={{ padding: "10px 16px", borderBottom: "1px solid #c0d8f0", display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#10b981", flexShrink: 0 }}>€</span>
+                <input style={{ ...s.input, flex: 1 }} type="number" min="1" placeholder="Betrag (z.B. 50)" value={offerAmountInput} onChange={e => setOfferAmountInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendPaymentRequest()} autoFocus />
+                <button onClick={sendPaymentRequest} style={{ ...s.btn("#10b981"), padding: "9px 14px", fontSize: 13, flexShrink: 0 }}>Senden</button>
+                <button onClick={() => { setShowPaymentRequest(false); setOfferAmountInput(""); }} style={{ background: "none", border: "none", color: "#4a5a7a", fontSize: 20, cursor: "pointer", flexShrink: 0 }}>×</button>
+              </div>
+            )}
+            <div style={{ padding: "10px 16px", display: "flex", gap: 8, alignItems: "center" }}>
+              {user?.id === activeChat?.provider_id && !chatPayment && (
+                <button onClick={() => setShowPaymentRequest(p => !p)} title="Zahlungsanforderung senden" style={{ width: 44, height: 44, borderRadius: 10, background: "#10b98115", border: "1px solid #10b98133", color: "#10b981", fontSize: 16, fontWeight: 700, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>€</button>
+              )}
+              <input style={{ ...s.input, flex: 1, fontSize: 16, minHeight: 44 }} placeholder="Nachricht..." value={msgInput} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendMessage()} />
+              <button onClick={sendMessage} style={{ ...s.btn(), padding: "0", width: 44, height: 44, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>→</button>
+            </div>
           </div>
         </>
       ) : (
