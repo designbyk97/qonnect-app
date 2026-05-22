@@ -248,7 +248,7 @@ export default function App() {
     const stripeConnect = params.get("stripe_connect");
     if (stripeConnect === "success") {
       window.history.replaceState({}, "", window.location.pathname);
-      await fetchProfile(user.id);
+      fetchProfile(user.id);
       showToast("Bankkonto erfolgreich verbunden! ✓");
     } else if (stripeConnect === "refresh") {
       window.history.replaceState({}, "", window.location.pathname);
