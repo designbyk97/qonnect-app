@@ -2190,6 +2190,16 @@ export default function App() {
                     {u.is_banned ? "Entsperren" : "Sperren"}
                   </button>
                 )}
+                {u.id !== user?.id && !u.is_admin && (
+                  <button onClick={async () => {
+                    if (!window.confirm(`"${u.display_name}" komplett löschen? Nicht rückgängig zu machen.`)) return;
+                    const { error } = await supabase.functions.invoke("delete-user", { body: { userId: u.id, requesterId: user.id } });
+                    if (error) { showToast("Fehler beim Löschen", "#ef4444"); }
+                    else { setAdminUsers(prev => prev.filter(x => x.id !== u.id)); showToast("Nutzer gelöscht ✓"); }
+                  }} style={{ padding: "5px 10px", borderRadius: 8, border: "1px solid #7f1d1d", background: "#7f1d1d20", color: "#ef4444", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                    🗑 Löschen
+                  </button>
+                )}
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
