@@ -416,7 +416,7 @@ export default function App() {
 
     const { data: existingMatch } = await supabase.from("matches")
       .select("id").or(`and(seeker_id.eq.${user.id},provider_id.eq.${post.author_id}),and(seeker_id.eq.${post.author_id},provider_id.eq.${user.id})`)
-      .eq("status", "active").single();
+      .in("status", ["open", "active", "completed"]).single();
 
     if (existingMatch) {
       const deletedChats = JSON.parse(localStorage.getItem(`deleted_chats_${user.id}`) || "[]");
@@ -480,7 +480,7 @@ export default function App() {
         post_id: offer.post_id,
         seeker_id: seekerId,
         provider_id: providerId,
-        status: "active"
+        status: "open"
       }).select("*, seeker:profiles!matches_seeker_id_fkey(display_name), provider:profiles!matches_provider_id_fkey(display_name)").single();
       if (error) { showToast("Fehler beim Annehmen", "#ef4444"); return; }
       await supabase.from("offers").update({ status: "accepted", match_id: newMatch.id }).eq("id", offer.id);
@@ -1701,7 +1701,9 @@ export default function App() {
               <Avatar initials={getChatPartner(activeChat)} size={32} />
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600 }}>{getChatPartner(activeChat)}</div>
-                <div style={{ fontSize: 11, color: "#10b981" }}>● Aktiv</div>
+                <div style={{ fontSize: 11, color: activeChat?.status === "active" ? "#10b981" : activeChat?.status === "completed" ? "#2a7fff" : "#f59e0b" }}>
+                  {activeChat?.status === "active" ? "● Zahlung aktiv" : activeChat?.status === "completed" ? "● Abgeschlossen" : "● Offen"}
+                </div>
               </div>
             </div>
             {deletingChatId === activeChat?.id ? (

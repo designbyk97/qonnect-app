@@ -59,6 +59,8 @@ serve(async (req) => {
       .update({ status: "released", released_at: new Date().toISOString() })
       .eq("id", paymentId);
 
+    await supabase.from("matches").update({ status: "completed" }).eq("id", payment.match_id);
+
     const netEur = (netAmount / 100).toFixed(2);
     const hasAccount = !!providerProfile?.stripe_account_id;
 
