@@ -31,7 +31,7 @@ const TrustBadge = ({ score, verified }) => {
 
 export default function App() {
   const [screen, setScreen] = useState("auth");
-  const [onboardingForm, setOnboardingForm] = useState({ name: "", type: "freelancer" });
+  const [onboardingForm, setOnboardingForm] = useState({ name: "", type: "freelancer", linkedin_url: "", website_url: "", description: "" });
   const [registeredWithEmail, setRegisteredWithEmail] = useState(false);
   const [cookieConsent, setCookieConsent] = useState(() => localStorage.getItem("cookie_consent"));
   const [showPushPrompt, setShowPushPrompt] = useState(false);
@@ -611,6 +611,8 @@ export default function App() {
 
   const handleOnboarding = async () => {
     if (!onboardingForm.name || onboardingForm.name.trim().length < 2) { showToast("Bitte Namen eingeben", "#ef4444"); return; }
+    if (!onboardingForm.linkedin_url) { showToast("Bitte LinkedIn URL angeben", "#ef4444"); return; }
+    if (!onboardingForm.description || onboardingForm.description.trim().length < 20) { showToast("Kurzbeschreibung: mindestens 20 Zeichen", "#ef4444"); return; }
     setLoading(true);
     const { error } = await supabase.from("profiles").upsert({
       id: user.id,
@@ -619,7 +621,10 @@ export default function App() {
       trust_score: 20,
       is_verified: false,
       posts_today: 0,
-      avatar_url: user.user_metadata?.avatar_url || null
+      avatar_url: user.user_metadata?.avatar_url || null,
+      linkedin_url: onboardingForm.linkedin_url || null,
+      website_url: onboardingForm.website_url || null,
+      description: onboardingForm.description || null,
     });
     if (error) { showToast("Fehler beim Speichern", "#ef4444"); setLoading(false); return; }
     await fetchProfile(user.id);
@@ -1199,7 +1204,7 @@ export default function App() {
           <input style={s.input} placeholder="Vollständiger Name oder Firmenname" value={onboardingForm.name} onChange={e => setOnboardingForm(p => ({ ...p, name: e.target.value }))} />
         </div>
         {!registeredWithEmail && (
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 16 }}>
             <label style={s.label}>Account-Typ</label>
             <div style={{ display: "flex", gap: 10 }}>
               {[{ k: "freelancer", l: "👤 Freelancer" }, { k: "sideprojekt", l: "💼 Side-Projekt" }, { k: "company", l: "🏢 Unternehmen" }].map(({ k, l }) => (
@@ -1208,8 +1213,20 @@ export default function App() {
             </div>
           </div>
         )}
+        <div style={{ marginBottom: 16 }}>
+          <label style={s.label}>LinkedIn Profil URL <span style={{ color: "#f59e0b" }}>*</span></label>
+          <input style={s.input} placeholder="https://linkedin.com/in/dein-name" value={onboardingForm.linkedin_url} onChange={e => setOnboardingForm(p => ({ ...p, linkedin_url: e.target.value }))} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={s.label}>Website / Portfolio <span style={{ color: "#8090aa", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
+          <input style={s.input} placeholder="https://deine-website.de" value={onboardingForm.website_url} onChange={e => setOnboardingForm(p => ({ ...p, website_url: e.target.value }))} />
+        </div>
+        <div style={{ marginBottom: 24 }}>
+          <label style={s.label}>Kurzbeschreibung <span style={{ color: "#f59e0b" }}>*</span></label>
+          <textarea style={{ ...s.input, height: 80, resize: "none", lineHeight: 1.5 }} placeholder="Was bietest du an oder was suchst du? (2-3 Sätze)" value={onboardingForm.description} onChange={e => setOnboardingForm(p => ({ ...p, description: e.target.value }))} />
+        </div>
         <button onClick={handleOnboarding} disabled={loading} style={{ ...s.btn(), width: "100%", padding: 14, fontSize: 15, borderRadius: 12, opacity: loading ? 0.7 : 1 }}>
-          {loading ? "Speichern..." : "Loslegen →"}
+          {loading ? "Speichern..." : "Weiter →"}
         </button>
       </div>
       {toast && <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: toast.color, color: "#fff", padding: "10px 20px", borderRadius: 100, fontSize: 13, fontWeight: 600, zIndex: 200, whiteSpace: "nowrap" }}>{toast.msg}</div>}
