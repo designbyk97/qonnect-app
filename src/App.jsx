@@ -270,7 +270,11 @@ export default function App() {
       setProfile(data);
       setEditForm({ bio: data.bio || "", linkedin_url: data.linkedin_url || "", skills: (data.skills || []).join(", "), location: data.location || "", is_available: data.is_available !== false });
       setEditProjects(data.projects || []);
-      setScreen("app");
+      if (data.status === "pending" || data.status === "rejected") {
+        setScreen("pending");
+      } else {
+        setScreen("app");
+      }
     } else {
       setScreen("onboarding");
     }
@@ -1048,6 +1052,31 @@ export default function App() {
         </button>
       </div>
       {toast && <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: toast.color, color: "#fff", padding: "10px 20px", borderRadius: 100, fontSize: 13, fontWeight: 600, zIndex: 200, whiteSpace: "nowrap" }}>{toast.msg}</div>}
+    </div>
+  );
+
+  // ── PENDING SCREEN ───────────────────────────────────────
+  if (screen === "pending") return (
+    <div style={{ ...s.page, alignItems: "center", justifyContent: "center", padding: "20px 16px", minHeight: "100vh" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+      <div style={{ width: "100%", maxWidth: 400, textAlign: "center" }}>
+        <div style={{ fontFamily: "'Orbitron', monospace", fontWeight: 900, fontSize: "2rem", color: "#0f1f3d", marginBottom: 32 }}>
+          <span style={{ color: "#2a7fff" }}>q</span>onnect
+        </div>
+        <div style={{ fontSize: 48, marginBottom: 20 }}>⏳</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: "#0f1f3d", marginBottom: 12 }}>
+          {profile?.status === "rejected" ? "Profil abgelehnt" : "Wird geprüft"}
+        </div>
+        <div style={{ background: "#e8f2ff", border: "1px solid #c0d8f0", borderRadius: 14, padding: 20, marginBottom: 24, fontSize: 14, color: "#1a3a6a", lineHeight: 1.7 }}>
+          {profile?.status === "rejected"
+            ? "Dein Profil wurde leider abgelehnt. Bitte kontaktiere uns unter contact@startqonnect.com für weitere Informationen."
+            : "Dein Profil wird aktuell geprüft. Wir melden uns innerhalb von 24 Stunden per E-Mail."}
+        </div>
+        <button onClick={handleLogout} style={{ ...s.btn("#e8f2ff"), color: "#1a3a6a", border: "1px solid #c0d8f0", width: "100%", padding: 14, fontSize: 14, borderRadius: 12 }}>
+          Abmelden
+        </button>
+      </div>
+      {toast && <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: toast.color, color: "#fff", padding: "10px 20px", borderRadius: 100, fontSize: 13, fontWeight: 600, zIndex: 200 }}>{toast.msg}</div>}
     </div>
   );
 
@@ -2131,15 +2160,28 @@ export default function App() {
 
         {/* NUTZER */}
         {adminTab === "users" && adminUsers.map(u => (
-          <div key={u.id} style={{ background: "#e8f2ff", border: `1px solid ${u.is_banned ? "#ef444444" : "#c0d8f0"}`, borderRadius: 12, padding: 14, marginBottom: 10 }}>
+          <div key={u.id} style={{ background: "#e8f2ff", border: `1px solid ${u.is_banned ? "#ef444444" : u.status === "pending" ? "#f59e0b44" : "#c0d8f0"}`, borderRadius: 12, padding: 14, marginBottom: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: u.is_banned ? "#ef4444" : "#0f1f3d" }}>
                   {u.display_name} {u.is_verified && "✓"} {u.is_admin && "⚙️"} {u.is_banned && "🚫"}
                 </div>
                 <div style={{ fontSize: 11, color: "#4a6a8a", marginTop: 2 }}>{u.account_type} · Trust {u.trust_score}</div>
+                <div style={{ fontSize: 11, marginTop: 3, fontWeight: 700, color: u.status === "approved" ? "#10b981" : u.status === "rejected" ? "#ef4444" : "#f59e0b" }}>
+                  {u.status === "approved" ? "✓ Freigegeben" : u.status === "rejected" ? "✗ Abgelehnt" : "⏳ Ausstehend"}
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 6 }}>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                {u.status !== "approved" && (
+                  <button onClick={() => { supabase.from("profiles").update({ status: "approved" }).eq("id", u.id).then(() => setAdminUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: "approved" } : x))); }} style={{ padding: "5px 10px", borderRadius: 8, border: "1px solid #10b981", background: "#10b98120", color: "#10b981", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                    Freigeben
+                  </button>
+                )}
+                {u.status !== "rejected" && u.id !== user?.id && (
+                  <button onClick={() => { supabase.from("profiles").update({ status: "rejected" }).eq("id", u.id).then(() => setAdminUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: "rejected" } : x))); }} style={{ padding: "5px 10px", borderRadius: 8, border: "1px solid #ef4444", background: "#ef444415", color: "#ef4444", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                    Ablehnen
+                  </button>
+                )}
                 <button onClick={() => verifyUser(u.id, !u.is_verified)} style={{ padding: "5px 10px", borderRadius: 8, border: `1px solid ${u.is_verified ? "#10b981" : "#c0d8f0"}`, background: u.is_verified ? "#10b98120" : "#e8f2ff", color: u.is_verified ? "#10b981" : "#4a6a8a", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                   {u.is_verified ? "✓ Verifiziert" : "Verifizieren"}
                 </button>
