@@ -69,7 +69,7 @@ export default function App() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [stats, setStats] = useState({ activeNow: 0, totalMembers: 0, postsToday: 0 });
   const [postForm, setPostForm] = useState({ title: "", description: "", budget: "", duration: "", location: "", tags: "" });
-  const [authForm, setAuthForm] = useState({ email: "", password: "", name: "", type: "freelancer" });
+  const [authForm, setAuthForm] = useState({ email: "", password: "", name: "", type: "freelancer", linkedin_url: "", website_url: "", description: "" });
   const [editForm, setEditForm] = useState({ bio: "", linkedin_url: "", skills: "", location: "", is_available: true });
   const [showOfferForm, setShowOfferForm] = useState(null);
   const [showOfferDetail, setShowOfferDetail] = useState(null);
@@ -555,13 +555,15 @@ export default function App() {
 
   const handleRegister = async () => {
     if (!authForm.email || !authForm.password || !authForm.name) { showToast("Alle Felder ausfüllen", "#ef4444"); return; }
+    if (!authForm.linkedin_url) { showToast("Bitte LinkedIn URL angeben", "#ef4444"); return; }
+    if (!authForm.description || authForm.description.trim().length < 20) { showToast("Kurzbeschreibung: mindestens 20 Zeichen", "#ef4444"); return; }
     if (authForm.password.length < 8) { showToast("Passwort: mindestens 8 Zeichen", "#ef4444"); return; }
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({ email: authForm.email, password: authForm.password });
       if (error) { showToast(error.message, "#ef4444"); setLoading(false); return; }
       if (data?.user) {
-        await supabase.from("profiles").insert({ id: data.user.id, account_type: authForm.type, display_name: authForm.name, trust_score: 20, is_verified: false, posts_today: 0 });
+        await supabase.from("profiles").insert({ id: data.user.id, account_type: authForm.type, display_name: authForm.name, trust_score: 20, is_verified: false, posts_today: 0, linkedin_url: authForm.linkedin_url || null, website_url: authForm.website_url || null, description: authForm.description || null });
         setOnboardingForm({ name: authForm.name, type: authForm.type });
         setRegisteredWithEmail(true);
       }
@@ -1122,6 +1124,23 @@ export default function App() {
                   <button key={k} onClick={() => setAuthForm(p => ({ ...p, type: k }))} style={{ flex: 1, padding: "12px 6px", borderRadius: 10, border: `2px solid ${authForm.type === k ? "#2a7fff" : "#c0d8f0"}`, background: authForm.type === k ? "#2a7fff18" : "#e8f2ff", color: authForm.type === k ? "#2a7fff" : "#4a6a9a", fontFamily: "inherit", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{l}</button>
                 ))}
               </div>
+            </div>
+          </>
+        )}
+
+        {authMode === "register" && (
+          <>
+            <div style={{ marginBottom: 14 }}>
+              <label style={s.label}>LinkedIn Profil URL <span style={{ color: "#f59e0b" }}>*</span></label>
+              <input style={s.input} placeholder="https://linkedin.com/in/dein-name" value={authForm.linkedin_url} onChange={e => setAuthForm(p => ({ ...p, linkedin_url: e.target.value }))} />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={s.label}>Website / Portfolio <span style={{ color: "#8090aa", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
+              <input style={s.input} placeholder="https://deine-website.de" value={authForm.website_url} onChange={e => setAuthForm(p => ({ ...p, website_url: e.target.value }))} />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={s.label}>Kurzbeschreibung <span style={{ color: "#f59e0b" }}>*</span></label>
+              <textarea style={{ ...s.input, height: 80, resize: "none", lineHeight: 1.5 }} placeholder="Was bietest du an oder was suchst du? (2-3 Sätze)" value={authForm.description} onChange={e => setAuthForm(p => ({ ...p, description: e.target.value }))} />
             </div>
           </>
         )}
@@ -2172,6 +2191,9 @@ export default function App() {
                 <div style={{ fontSize: 11, marginTop: 3, fontWeight: 700, color: u.status === "approved" ? "#10b981" : u.status === "rejected" ? "#ef4444" : "#f59e0b" }}>
                   {u.status === "approved" ? "✓ Freigegeben" : u.status === "rejected" ? "✗ Abgelehnt" : "⏳ Ausstehend"}
                 </div>
+                {u.linkedin_url && <a href={u.linkedin_url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#0077b5", display: "block", marginTop: 3 }}>🔗 LinkedIn</a>}
+                {u.website_url && <a href={u.website_url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2a7fff", display: "block", marginTop: 2 }}>🌐 Website</a>}
+                {u.description && <div style={{ fontSize: 11, color: "#4a6a8a", marginTop: 4, fontStyle: "italic", maxWidth: 200 }}>{u.description}</div>}
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
                 {u.status !== "approved" && (
